@@ -14,6 +14,7 @@ import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { ReceiptItem, ParsedReceipt, TransactionCategory } from '../types';
 import { parseReceiptImage } from '../services/receiptParser';
+import { parseReceiptWithAI, getApiKey, setApiKey } from '../services/aiReceiptScanner';
 import { triggerHaptic } from '../services/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -37,13 +38,16 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
   const [step, setStep] = useState<'capture' | 'preview'>('capture');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedReceipt | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [pendingBase64, setPendingBase64] = useState<string | null>(null);
 
   // État d'édition discrète d'une ligne d'article
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
 
-  // Lancer la prise de photo
+  // Lancer la prise de photo avec extraction base64
   const handleTakePhoto = async () => {
     await triggerHaptic('light');
     try {
@@ -58,15 +62,15 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
 
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
-        quality: 0.8,
+        quality: 0.6,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        processImage(result.assets[0].uri);
+        processImage(result.assets[0].base64, result.assets[0].uri);
       }
     } catch (e) {
-      console.warn('Camera launch fallback to simulation:', e);
-      // Fallback automatique si la caméra n'est pas dispo dans le simulateur
+      console.warn('Camera launch error:', e);
       processImage();
     }
   };
@@ -84,26 +88,69 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: false,
-        quality: 0.8,
+        quality: 0.6,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        processImage(result.assets[0].uri);
+        processImage(result.assets[0].base64, result.assets[0].uri);
       }
     } catch (e) {
-      console.warn('Image library fallback:', e);
+      console.warn('Image picker error:', e);
       processImage();
     }
   };
 
-  // Lancer l'analyse du reçu
-  const processImage = async (imageUri?: string) => {
+  // Lancer l'analyse du reçu par la vraie IA
+  const processImage = async (base64?: string | null, imageUri?: string) => {
     setIsAnalyzing(true);
-    const receipt = await parseReceiptImage(imageUri);
-    setParsedData(receipt);
-    setIsAnalyzing(false);
-    setStep('preview');
-    await triggerHaptic('success');
+    try {
+      if (base64 && getApiKey()) {
+        const aiReceipt = await parseReceiptWithAI(base64, imageUri);
+        setParsedData(aiReceipt);
+        setStep('preview');
+        await triggerHaptic('success');
+      } else if (base64 && !getApiKey()) {
+        // Demander la clé à l'utilisateur
+        setPendingBase64(base64);
+        setShowApiKeyModal(true);
+      } else {
+        // Fallback local
+        const fallback = await parseReceiptImage(imageUri);
+        setParsedData(fallback);
+        setStep('preview');
+        await triggerHaptic('success');
+      }
+    } catch (error: any) {
+      console.warn('AI Parsing failed, falling back:', error);
+      if (error?.message === 'MISSING_API_KEY') {
+        setPendingBase64(base64 || null);
+        setShowApiKeyModal(true);
+      } else {
+        Alert.alert(
+          'Analyse IA indisponible',
+          'Une erreur est survenue lors de l’analyse. Passage en mode secours.'
+        );
+        const fallback = await parseReceiptImage(imageUri);
+        setParsedData(fallback);
+        setStep('preview');
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) {
+      Alert.alert('Clé requise', 'Veuillez coller votre clé Google AI Studio.');
+      return;
+    }
+    setApiKey(apiKeyInput.trim());
+    setShowApiKeyModal(false);
+    if (pendingBase64) {
+      processImage(pendingBase64);
+      setPendingBase64(null);
+    }
   };
 
   // Cocher / Décocher un article avec mise à jour du total
@@ -428,6 +475,50 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
           </View>
         </View>
       )}
+
+      {/* MODALE DE SAISIE DE CLÉ D'API IA */}
+      <Modal visible={showApiKeyModal} transparent animationType="fade">
+        <View style={styles.apiModalOverlay}>
+          <View style={styles.apiModalCard}>
+            <View style={styles.apiModalIcon}>
+              <Ionicons name="sparkles" size={24} color="#111111" />
+            </View>
+            <Text style={styles.apiModalTitle}>Activer l'IA de lecture</Text>
+            <Text style={styles.apiModalDesc}>
+              Pour lire vos vrais tickets de caisse, l'application utilise l'IA Google Gemini (100% gratuite). Collez votre clé ici :
+            </Text>
+
+            <TextInput
+              style={styles.apiModalInput}
+              placeholder="Collez votre clé API Gemini..."
+              placeholderTextColor={THEME.colors.textMuted}
+              value={apiKeyInput}
+              onChangeText={setApiKeyInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <View style={styles.apiModalActions}>
+              <TouchableOpacity
+                style={styles.apiModalCancelBtn}
+                onPress={() => {
+                  setShowApiKeyModal(false);
+                  setIsAnalyzing(false);
+                }}
+              >
+                <Text style={styles.apiModalCancelText}>Plus tard</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.apiModalSaveBtn}
+                onPress={handleSaveApiKey}
+              >
+                <Text style={styles.apiModalSaveText}>Activer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -771,5 +862,85 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  /* STYLES MODALE CLÉ API */
+  apiModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  apiModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    ...THEME.shadows.floating,
+  },
+  apiModalIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F4F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  apiModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    marginBottom: 8,
+  },
+  apiModalDesc: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  apiModalInput: {
+    width: '100%',
+    backgroundColor: '#F4F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: THEME.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    marginBottom: 16,
+  },
+  apiModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  apiModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F4F4F6',
+    alignItems: 'center',
+  },
+  apiModalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+  apiModalSaveBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#111111',
+    alignItems: 'center',
+  },
+  apiModalSaveText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

@@ -26,6 +26,7 @@ import { BottomNavBar, NavTab } from '../components/BottomNavBar';
 import { AddTransactionModal } from '../components/AddTransactionModal';
 import { ReceiptScannerModal } from '../components/ReceiptScannerModal';
 import { AnalyticsView } from '../components/AnalyticsView';
+import { ProfileView } from '../components/ProfileView';
 
 export default function Index() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
@@ -95,7 +96,12 @@ export default function Index() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {currentTab === 'analytics' ? (
+        {currentTab === 'profile' ? (
+          <ProfileView
+            onBack={() => setCurrentTab('home')}
+            transactionsCount={transactions.length}
+          />
+        ) : currentTab === 'analytics' ? (
           <AnalyticsView
             stats={stats}
             period={period}
