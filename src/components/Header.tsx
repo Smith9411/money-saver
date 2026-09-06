@@ -49,18 +49,38 @@ export const Header: React.FC<HeaderProps> = ({
           activeOpacity={0.8}
           onPress={onProfilePress}
         >
-          <View style={[styles.avatarContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.accent }]}>
-            {userAvatar ? (
-              <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
-            ) : (
-              <View style={[styles.avatarInner, { backgroundColor: theme.colors.accent }]}>
-                <Ionicons
-                  name="person"
-                  size={20}
-                  color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
-                />
-              </View>
-            )}
+          {/* Anneau délicat adapté au thème actif */}
+          <View
+            style={[
+              styles.avatarHaloRing,
+              {
+                borderColor: theme.colors.accent,
+                backgroundColor: theme.colors.background,
+                shadowColor: theme.colors.accent,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.avatarContainer,
+                {
+                  backgroundColor: theme.colors.accent,
+                  borderColor: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+                },
+              ]}
+            >
+              {userAvatar ? (
+                <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
+              ) : (
+                <View style={[styles.avatarInner, { backgroundColor: theme.colors.accent }]}>
+                  <Ionicons
+                    name="person"
+                    size={19}
+                    color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+                  />
+                </View>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -105,29 +125,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#1E1E24',
+  avatarHaloRing: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    ...THEME.shadows.subtle,
+    padding: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  avatarContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
   },
   avatarInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
-    backgroundColor: '#18181B',
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 21,
   },
   actionButtons: {
     flexDirection: 'row',
