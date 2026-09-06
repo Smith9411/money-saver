@@ -19,6 +19,7 @@ import {
   setSetting,
   resetAllData,
 } from '../services/db';
+import { initApiKey } from '../services/aiReceiptScanner';
 
 import { Header } from '../components/Header';
 import { MetricsPill } from '../components/MetricsPill';
@@ -32,20 +33,22 @@ import { ReceiptScannerModal } from '../components/ReceiptScannerModal';
 import { ReceiptDetailModal } from '../components/ReceiptDetailModal';
 import { AnalyticsView } from '../components/AnalyticsView';
 import { ProfileView } from '../components/ProfileView';
+import { OnboardingView } from '../components/OnboardingView';
 
 export default function Index() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [period, setPeriod] = useState<TimePeriod>('week');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [userName, setUserName] = useState<string>('');
+  const [userName, setUserName] = useState<string | null>(null); // null = en chargement, '' = onboarding requis
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
 
-  // Initialisation de la base SQLite locale
+  // Initialisation de la base SQLite et de la clé d'API
   useEffect(() => {
     const loadData = async () => {
       await initDatabase();
+      await initApiKey();
       const loaded = await getTransactions();
       setTransactions(loaded);
       const savedName = await getSetting('user_name', '');
@@ -69,21 +72,23 @@ export default function Index() {
     return getCategoryBudgets(transactions);
   }, [transactions]);
 
-  // Enregistrer le prénom de l'utilisateur
+  // Enregistrer le prénom depuis l'onboarding ou le profil
   const handleSaveUserName = async (name: string) => {
     setUserName(name);
     await setSetting('user_name', name);
   };
 
-  // Remise à zéro complète de l'application
+  // Remise à zéro complète de l'application (bascule automatiquement sur l'onboarding)
   const handleResetAllData = async () => {
     await resetAllData();
+    await setSetting('user_name', '');
+    setUserName('');
     setTransactions([]);
     setSelectedTxForReceipt(null);
     setCurrentTab('home');
   };
 
-  // Ajouter une transaction manuelle (avec support récurrent)
+  // Ajouter une transaction manuelle
   const handleAddTransaction = async (data: {
     title: string;
     amount: number;
@@ -103,7 +108,7 @@ export default function Index() {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Traiter et sauvegarder un ticket scanné avec ses articles détaillés retenus
+  // Traiter et sauvegarder un ticket scanné
   const handleSaveReceipt = async (data: {
     merchant: string;
     totalAmount: number;
@@ -124,6 +129,21 @@ export default function Index() {
     setTransactions((prev) => [created, ...prev]);
   };
 
+  // 1. Pendant le chargement initial de la base
+  if (userName === null) {
+    return <View style={{ flex: 1, backgroundColor: '#FAF9F6' }} />;
+  }
+
+  // 2. Si aucun prénom n'est défini (premier lancement ou après réinitialisation) : Page d'onboarding !
+  if (!userName || userName.trim().length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <OnboardingView onComplete={handleSaveUserName} />
+      </SafeAreaView>
+    );
+  }
+
+  // 3. Application principale une fois l'utilisateur accueilli
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -148,7 +168,7 @@ export default function Index() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* 1. Header minimaliste (Avatar, Salutation, Actions) */}
+            {/* 1. Header minimaliste */}
             <Header
               onCalendarPress={() => setCurrentTab('analytics')}
               onSearchPress={() => setIsAddModalOpen(true)}
@@ -160,7 +180,7 @@ export default function Index() {
             {/* 2. Métriques clés en pilule (Dépenses, Revenus, Épargne) */}
             <MetricsPill stats={stats} />
 
-            {/* 3. Graphique d'évolution des flux (Inspiré du design de référence) */}
+            {/* 3. Graphique d'évolution des flux */}
             <CashflowChart
               period={period}
               onPeriodChange={setPeriod}

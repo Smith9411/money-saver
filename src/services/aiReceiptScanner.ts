@@ -1,10 +1,22 @@
 import { CONFIG } from '../constants/config';
 import { ParsedReceipt, ReceiptItem, TransactionCategory } from '../types';
+import { getSetting, setSetting } from './db';
 
 let userApiKey = CONFIG.GEMINI_API_KEY;
 
+export async function initApiKey() {
+  const savedKey = await getSetting('gemini_api_key', '');
+  if (savedKey) {
+    userApiKey = savedKey;
+  } else if (CONFIG.GEMINI_API_KEY) {
+    userApiKey = CONFIG.GEMINI_API_KEY;
+    await setSetting('gemini_api_key', CONFIG.GEMINI_API_KEY);
+  }
+}
+
 export function setApiKey(key: string) {
   userApiKey = key.trim();
+  setSetting('gemini_api_key', key.trim());
 }
 
 export function getApiKey(): string {
