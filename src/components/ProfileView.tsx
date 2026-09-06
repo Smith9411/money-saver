@@ -6,8 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   Image,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../constants/theme';
@@ -36,9 +38,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const { theme, themeId, changeTheme, availableThemes } = useTheme();
   const [nameInput, setNameInput] = useState(userName);
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const [themeFilter, setThemeFilter] = useState<'all' | 'light' | 'dark'>('all');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2600);
+  };
 
   const filteredThemes = availableThemes.filter((t) => {
     if (themeFilter === 'light') return !t.isDark;
@@ -50,7 +63,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'Veuillez autoriser l’accès à votre galerie pour ajouter une photo de profil.');
+        showToast('Permission galerie refusée');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -62,6 +75,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         triggerHaptic('success');
         onSaveUserAvatar(result.assets[0].uri);
+        setIsPhotoModalOpen(false);
+        showToast('Photo de profil mise à jour');
       }
     } catch (e) {
       console.warn('Error picking image:', e);
@@ -72,7 +87,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'Veuillez autoriser l’accès à l’appareil photo.');
+        showToast('Permission caméra refusée');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -83,6 +98,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         triggerHaptic('success');
         onSaveUserAvatar(result.assets[0].uri);
+        setIsPhotoModalOpen(false);
+        showToast('Photo de profil mise à jour');
       }
     } catch (e) {
       console.warn('Error taking photo:', e);
@@ -91,60 +108,40 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleAvatarPress = () => {
     triggerHaptic('light');
-    Alert.alert(
-      'Photo de profil',
-      'Personnalisez votre photo de profil :',
-      [
-        { text: 'Choisir dans la galerie', onPress: pickImageFromGallery },
-        { text: 'Prendre une photo', onPress: takePhotoWithCamera },
-        ...(userAvatar
-          ? [
-              {
-                text: 'Supprimer la photo',
-                style: 'destructive' as const,
-                onPress: () => {
-                  triggerHaptic('medium');
-                  onSaveUserAvatar(null);
-                },
-              },
-            ]
-          : []),
-        { text: 'Annuler', style: 'cancel' as const },
-      ]
-    );
+    setIsPhotoModalOpen(true);
+  };
+
+  const handleOpenEditProfile = () => {
+    triggerHaptic('light');
+    setNameInput(userName);
+    setIsEditProfileModalOpen(true);
   };
 
   const handleSaveName = () => {
+    if (nameInput.trim().length === 0) return;
     triggerHaptic('success');
     onSaveUserName(nameInput.trim());
-    setIsEditingName(false);
-    Alert.alert('Profil mis à jour', `Votre prénom est désormais "${nameInput.trim()}".`);
+    setIsEditProfileModalOpen(false);
+    showToast('Profil mis à jour');
   };
 
   const handleConfirmReset = () => {
     triggerHaptic('heavy');
-    Alert.alert(
-      'Réinitialiser toutes les données ?',
-      'Cette action va effacer toutes les transactions et remettre l’application à zéro, comme si vous veniez de l’installer.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Tout effacer',
-          style: 'destructive',
-          onPress: () => {
-            onResetAllData();
-            Alert.alert('Remise à zéro effectuée', 'Toutes les dépenses ont été effacées.');
-          },
-        },
-      ]
-    );
+    setIsResetModalOpen(true);
+  };
+
+  const handleExecuteReset = () => {
+    setIsResetModalOpen(false);
+    onResetAllData();
+    showToast('Application remise à zéro');
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.screenWrapper}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* En-tête */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -198,53 +195,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </View>
         </TouchableOpacity>
 
-        {isEditingName ? (
-          <View style={styles.nameEditBox}>
-            <TextInput
-              style={[
-                styles.nameInput,
-                {
-                  backgroundColor: theme.colors.surfaceSubtle,
-                  borderColor: theme.colors.accent,
-                  color: theme.colors.textPrimary,
-                },
-              ]}
-              value={nameInput}
-              onChangeText={setNameInput}
-              placeholder="Entrez votre prénom..."
-              placeholderTextColor={theme.colors.textMuted}
-              autoFocus
-            />
-            <TouchableOpacity
-              style={[styles.saveNameBtn, { backgroundColor: theme.colors.accent }]}
-              onPress={handleSaveName}
-            >
-              <Text
-                style={[
-                  styles.saveNameBtnText,
-                  {
-                    color: theme.isDark && theme.id === 'midnight-titanium'
-                      ? '#000000'
-                      : '#FFFFFF',
-                  },
-                ]}
-              >
-                Valider
-              </Text>
-            </TouchableOpacity>
+        {/* Prénom avec bouton d'édition stylé */}
+        <TouchableOpacity
+          style={styles.nameRow}
+          activeOpacity={0.7}
+          onPress={handleOpenEditProfile}
+        >
+          <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>
+            {userName && userName.trim().length > 0 ? userName : 'Définir mon prénom'}
+          </Text>
+          <View style={[styles.editPencilBadge, { backgroundColor: theme.colors.surfaceSubtle }]}>
+            <Ionicons name="pencil" size={13} color={theme.colors.accent} />
           </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.nameRow}
-            activeOpacity={0.7}
-            onPress={() => setIsEditingName(true)}
-          >
-            <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>
-              {userName && userName.trim().length > 0 ? userName : 'Définir mon prénom'}
-            </Text>
-            <Ionicons name="pencil-outline" size={16} color={theme.colors.textSecondary} style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
-        )}
+        </TouchableOpacity>
+
+        {/* Bouton pilule d'action "Modifier le profil" */}
+        <TouchableOpacity
+          style={[
+            styles.editProfileBtnPill,
+            {
+              backgroundColor: theme.colors.surfaceSubtle,
+              borderColor: theme.colors.border,
+            },
+          ]}
+          activeOpacity={0.7}
+          onPress={handleOpenEditProfile}
+        >
+          <Ionicons name="create-outline" size={14} color={theme.colors.textPrimary} style={{ marginRight: 5 }} />
+          <Text style={[styles.editProfileBtnText, { color: theme.colors.textPrimary }]}>
+            Modifier le profil
+          </Text>
+        </TouchableOpacity>
 
         <Text style={[styles.userSub, { color: theme.colors.textSecondary }]}>Données stockées localement sur cet appareil</Text>
 
@@ -511,10 +492,470 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       <View style={{ height: 120 }} />
     </ScrollView>
+
+    {/* Toast flottant élégant */}
+    {toastMessage && (
+      <View
+        style={[
+          styles.toastContainer,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        <Ionicons name="checkmark-circle" size={18} color={theme.colors.incomeText} />
+        <Text style={[styles.toastText, { color: theme.colors.textPrimary }]}>{toastMessage}</Text>
+      </View>
+    )}
+
+    {/* 1. Modal de Sélection de Photo de Profil (Bottom Sheet) */}
+    <Modal
+      visible={isPhotoModalOpen}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setIsPhotoModalOpen(false)}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalOverlay}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsPhotoModalOpen(false)}
+        />
+        <View
+          style={[
+            styles.bottomSheet,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+              borderLeftColor: theme.colors.border,
+              borderRightColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={[styles.sheetHandle, { backgroundColor: theme.colors.border }]} />
+
+          <View style={styles.sheetHeader}>
+            <View>
+              <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary }]}>
+                Photo de profil
+              </Text>
+              <Text style={[styles.sheetSubtitle, { color: theme.colors.textSecondary }]}>
+                Personnalisez votre avatar d'application
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setIsPhotoModalOpen(false)}
+              style={[styles.sheetCloseBtn, { backgroundColor: theme.colors.surfaceSubtle }]}
+            >
+              <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Aperçu central de l'avatar */}
+          <View style={styles.sheetAvatarPreviewWrap}>
+            <View
+              style={[
+                styles.sheetAvatarPreview,
+                {
+                  borderColor: theme.colors.accent,
+                  backgroundColor: theme.colors.surfaceSubtle,
+                },
+              ]}
+            >
+              {userAvatar ? (
+                <Image source={{ uri: userAvatar }} style={styles.sheetAvatarImage} />
+              ) : (
+                <Ionicons
+                  name="person"
+                  size={36}
+                  color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : theme.colors.accent}
+                />
+              )}
+            </View>
+          </View>
+
+          {/* Options de sélection */}
+          <View style={styles.sheetOptions}>
+            <TouchableOpacity
+              style={[
+                styles.sheetOptionCard,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={takePhotoWithCamera}
+            >
+              <View
+                style={[
+                  styles.sheetOptionIconWrap,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                ]}
+              >
+                <Ionicons name="camera" size={20} color={theme.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sheetOptionTitle, { color: theme.colors.textPrimary }]}>
+                  Prendre une photo
+                </Text>
+                <Text style={[styles.sheetOptionDesc, { color: theme.colors.textSecondary }]}>
+                  Utiliser l'appareil photo
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.sheetOptionCard,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={pickImageFromGallery}
+            >
+              <View
+                style={[
+                  styles.sheetOptionIconWrap,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                ]}
+              >
+                <Ionicons name="images" size={20} color={theme.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sheetOptionTitle, { color: theme.colors.textPrimary }]}>
+                  Choisir dans la galerie
+                </Text>
+                <Text style={[styles.sheetOptionDesc, { color: theme.colors.textSecondary }]}>
+                  Importer depuis vos albums
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+
+            {userAvatar ? (
+              <TouchableOpacity
+                style={[
+                  styles.sheetOptionCard,
+                  {
+                    backgroundColor: theme.isDark ? 'rgba(239, 68, 68, 0.08)' : '#FEF2F2',
+                    borderColor: theme.isDark ? 'rgba(239, 68, 68, 0.25)' : '#FECDD3',
+                  },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  triggerHaptic('medium');
+                  onSaveUserAvatar(null);
+                  setIsPhotoModalOpen(false);
+                  showToast('Photo de profil supprimée');
+                }}
+              >
+                <View
+                  style={[
+                    styles.sheetOptionIconWrap,
+                    { backgroundColor: theme.isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2', borderColor: 'transparent' },
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={20} color={theme.colors.expenseText} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sheetOptionTitle, { color: theme.colors.expenseText }]}>
+                    Supprimer la photo
+                  </Text>
+                  <Text style={[styles.sheetOptionDesc, { color: theme.colors.expenseText, opacity: 0.8 }]}>
+                    Revenir à l'icône initiale
+                  </Text>
+                </View>
+                <Ionicons name="close-circle-outline" size={18} color={theme.colors.expenseText} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.sheetCancelBtn, { backgroundColor: theme.colors.surfaceSubtle }]}
+            activeOpacity={0.7}
+            onPress={() => setIsPhotoModalOpen(false)}
+          >
+            <Text style={[styles.sheetCancelText, { color: theme.colors.textPrimary }]}>
+              Annuler
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+
+    {/* 2. Modal de Modification du Profil (Prénom & Avatar) */}
+    <Modal
+      visible={isEditProfileModalOpen}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setIsEditProfileModalOpen(false)}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalOverlay}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsEditProfileModalOpen(false)}
+        />
+        <View
+          style={[
+            styles.bottomSheet,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+              borderLeftColor: theme.colors.border,
+              borderRightColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={[styles.sheetHandle, { backgroundColor: theme.colors.border }]} />
+
+          <View style={styles.sheetHeader}>
+            <View>
+              <Text style={[styles.sheetTitle, { color: theme.colors.textPrimary }]}>
+                Modifier le profil
+              </Text>
+              <Text style={[styles.sheetSubtitle, { color: theme.colors.textSecondary }]}>
+                Personnalisez vos informations d'accueil
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setIsEditProfileModalOpen(false)}
+              style={[styles.sheetCloseBtn, { backgroundColor: theme.colors.surfaceSubtle }]}
+            >
+              <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Mini avatar cliquable */}
+          <View style={styles.editProfileAvatarRow}>
+            <TouchableOpacity
+              style={styles.editProfileAvatarTouchable}
+              activeOpacity={0.8}
+              onPress={() => {
+                setIsEditProfileModalOpen(false);
+                setTimeout(() => setIsPhotoModalOpen(true), 250);
+              }}
+            >
+              <View
+                style={[
+                  styles.editProfileAvatarWrap,
+                  {
+                    borderColor: theme.colors.accent,
+                    backgroundColor: theme.colors.surfaceSubtle,
+                  },
+                ]}
+              >
+                {userAvatar ? (
+                  <Image source={{ uri: userAvatar }} style={styles.editProfileAvatarImage} />
+                ) : (
+                  <Ionicons
+                    name="person"
+                    size={26}
+                    color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : theme.colors.accent}
+                  />
+                )}
+              </View>
+              <View style={[styles.editProfileCameraBadge, { backgroundColor: theme.colors.accent }]}>
+                <Ionicons
+                  name="camera"
+                  size={12}
+                  color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+                />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1, marginLeft: 14 }}
+              onPress={() => {
+                setIsEditProfileModalOpen(false);
+                setTimeout(() => setIsPhotoModalOpen(true), 250);
+              }}
+            >
+              <Text style={[styles.editProfileAvatarLabel, { color: theme.colors.textPrimary }]}>
+                Photo de profil
+              </Text>
+              <Text style={[styles.editProfileAvatarHint, { color: theme.colors.accent }]}>
+                Changer la photo...
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Champ Prénom */}
+          <View style={styles.editInputGroup}>
+            <Text style={[styles.editInputLabel, { color: theme.colors.textSecondary }]}>
+              VOTRE PRÉNOM OU PSEUDO
+            </Text>
+            <View
+              style={[
+                styles.editInputContainer,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: isInputFocused ? theme.colors.accent : theme.colors.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={isInputFocused ? theme.colors.accent : theme.colors.textMuted}
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[styles.editTextInput, { color: theme.colors.textPrimary }]}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Ex: Alexandre"
+                placeholderTextColor={theme.colors.textMuted}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+                maxLength={25}
+                autoCorrect={false}
+              />
+              {nameInput.length > 0 && (
+                <TouchableOpacity onPress={() => setNameInput('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Boutons d'action */}
+          <View style={styles.sheetActionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.sheetCancelSmallBtn,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setIsEditProfileModalOpen(false)}
+            >
+              <Text style={[styles.sheetCancelSmallText, { color: theme.colors.textPrimary }]}>
+                Annuler
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.sheetSaveBtn,
+                {
+                  backgroundColor: theme.colors.accent,
+                  opacity: nameInput.trim().length > 0 ? 1 : 0.45,
+                },
+              ]}
+              activeOpacity={0.8}
+              disabled={nameInput.trim().length === 0}
+              onPress={handleSaveName}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.sheetSaveBtnText,
+                  {
+                    color: theme.isDark && theme.id === 'midnight-titanium'
+                      ? '#000000'
+                      : '#FFFFFF',
+                  },
+                ]}
+              >
+                Enregistrer
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+
+    {/* 3. Modal de Réinitialisation Complète */}
+    <Modal
+      visible={isResetModalOpen}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setIsResetModalOpen(false)}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalOverlay}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsResetModalOpen(false)}
+        />
+        <View
+          style={[
+            styles.bottomSheet,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+              borderLeftColor: theme.colors.border,
+              borderRightColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={[styles.sheetHandle, { backgroundColor: theme.colors.border }]} />
+
+          <View style={styles.resetModalIconWrap}>
+            <View style={[styles.resetIconCircle, { backgroundColor: theme.isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2' }]}>
+              <Ionicons name="warning" size={28} color={theme.colors.expenseText} />
+            </View>
+          </View>
+
+          <Text style={[styles.resetModalTitle, { color: theme.colors.textPrimary }]}>
+            Réinitialiser l'application ?
+          </Text>
+          <Text style={[styles.resetModalDesc, { color: theme.colors.textSecondary }]}>
+            Cette action va effacer toutes les transactions et remettre l’application à zéro, comme lors de la première installation.
+          </Text>
+
+          <View style={styles.resetActions}>
+            <TouchableOpacity
+              style={[styles.resetConfirmBtn, { backgroundColor: theme.colors.expenseText }]}
+              activeOpacity={0.8}
+              onPress={handleExecuteReset}
+            >
+              <Ionicons name="trash-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.resetConfirmBtnText}>Tout effacer et réinitialiser</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.resetCancelBtn, { backgroundColor: theme.colors.surfaceSubtle }]}
+              activeOpacity={0.7}
+              onPress={() => setIsResetModalOpen(false)}
+            >
+              <Text style={[styles.resetCancelBtnText, { color: theme.colors.textPrimary }]}>
+                Annuler
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,
@@ -590,37 +1031,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
-  nameEditBox: {
+  editPencilBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  editProfileBtnPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    paddingHorizontal: 20,
-    marginBottom: 4,
-  },
-  nameInput: {
-    flex: 1,
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: THEME.radius.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    fontWeight: '700',
-    color: THEME.colors.textPrimary,
-    borderWidth: 1,
-    borderColor: '#111111',
-    textAlign: 'center',
-  },
-  saveNameBtn: {
-    backgroundColor: '#111111',
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: THEME.radius.sm,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    borderWidth: 1,
+    marginTop: 10,
+    marginBottom: 2,
   },
-  saveNameBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
+  editProfileBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   userSub: {
     fontSize: 12,
@@ -845,5 +1276,274 @@ const styles = StyleSheet.create({
   filterTabTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  bottomSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingTop: 12,
+    ...THEME.shadows.floating,
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+    opacity: 0.4,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  sheetCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetAvatarPreviewWrap: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  sheetAvatarPreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  sheetAvatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  sheetOptions: {
+    gap: 10,
+    marginVertical: 12,
+  },
+  sheetOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  sheetOptionIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  sheetOptionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sheetOptionDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  sheetCancelBtn: {
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  sheetCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editProfileAvatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  editProfileAvatarTouchable: {
+    position: 'relative',
+  },
+  editProfileAvatarWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  editProfileAvatarImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+  },
+  editProfileCameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  editProfileAvatarLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  editProfileAvatarHint: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  editInputGroup: {
+    marginBottom: 18,
+  },
+  editInputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  editInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+  },
+  editTextInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sheetActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  sheetCancelSmallBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  sheetCancelSmallText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sheetSaveBtn: {
+    flex: 1.6,
+    flexDirection: 'row',
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetSaveBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  resetModalIconWrap: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  resetIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  resetModalDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 10,
+    marginBottom: 18,
+  },
+  resetActions: {
+    gap: 10,
+  },
+  resetConfirmBtn: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetConfirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  resetCancelBtn: {
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 54 : 32,
+    alignSelf: 'center',
+    zIndex: 9999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    ...THEME.shadows.floating,
+  },
+  toastText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
