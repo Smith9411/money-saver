@@ -56,7 +56,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* Carte Résumé du Solde Net */}
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Épargne nette sur la période</Text>
+        <Text style={styles.balanceLabel}>Solde net sur la période</Text>
         <Text
           style={[
             styles.balanceAmount,
@@ -66,10 +66,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           {stats.netBalance >= 0 ? '+' : ''}
           {formatEuro(stats.netBalance)}
         </Text>
-        <View style={styles.rateBadge}>
-          <Ionicons name="sparkles" size={13} color="#15803D" />
-          <Text style={styles.rateText}>Taux d'épargne : {stats.savingsRate}%</Text>
-        </View>
       </View>
 
       {/* Deux colonnes : Entrées vs Sorties */}

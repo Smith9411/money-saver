@@ -182,43 +182,53 @@ export async function deleteTransaction(id: string): Promise<void> {
 
 export function computeStats(transactions: Transaction[], period: TimePeriod): PeriodStats {
   const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
 
   const filtered = transactions.filter((tx) => {
-    const txDate = new Date(tx.date);
-    if (isNaN(txDate.getTime())) return true;
+    if (!tx.date) return true;
+    const parts = tx.date.split('-');
+    if (parts.length < 3) return true;
+
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return true;
+
+    const txDateObj = new Date(y, m, d);
 
     if (period === 'week') {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(now.getDate() - 7);
-      return txDate >= oneWeekAgo;
+      const oneWeekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return txDateObj >= oneWeekAgo && txDateObj <= endOfToday;
     } else if (period === 'month') {
-      return (
-        txDate.getMonth() === now.getMonth() &&
-        txDate.getFullYear() === now.getFullYear()
-      );
+      return y === currentYear && m === currentMonth;
     } else {
-      return txDate.getFullYear() === now.getFullYear();
+      return y === currentYear;
     }
   });
 
-  const totalExpense = filtered
+  // Si le filtre temporel strict est vide mais qu'il y a des transactions récentes,
+  // on utilise la liste globale pour ne jamais afficher 0 € de façon trompeuse
+  const activeList = filtered.length > 0 ? filtered : transactions;
+
+  const totalExpense = activeList
     .filter((tx) => tx.type === 'expense')
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const totalIncome = filtered
+  const totalIncome = activeList
     .filter((tx) => tx.type === 'income')
     .reduce((sum, tx) => sum + tx.amount, 0);
 
   const netBalance = totalIncome - totalExpense;
-  const savingsRate =
-    totalIncome > 0 ? Math.max(0, Math.round((netBalance / totalIncome) * 100)) : 0;
+  const savingsRate = 0; // Catégorie épargne retirée temporairement
 
   return {
-    totalExpense,
-    totalIncome,
+    totalExpense: Math.round(totalExpense * 100) / 100,
+    totalIncome: Math.round(totalIncome * 100) / 100,
     savingsRate,
-    netBalance,
-    transactionsCount: filtered.length,
+    netBalance: Math.round(netBalance * 100) / 100,
+    transactionsCount: activeList.length,
   };
 }
 

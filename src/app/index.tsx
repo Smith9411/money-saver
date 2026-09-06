@@ -171,19 +171,18 @@ export default function Index() {
             {/* 1. Header minimaliste */}
             <Header
               onCalendarPress={() => setCurrentTab('analytics')}
-              onSearchPress={() => setIsAddModalOpen(true)}
-              onOptionsPress={() => setPeriod(period === 'week' ? 'month' : 'week')}
               onProfilePress={() => setCurrentTab('profile')}
               userName={userName}
             />
 
-            {/* 2. Métriques clés en pilule (Dépenses, Revenus, Épargne) */}
+            {/* 2. Métriques clés en pilule (Dépenses, Revenus) */}
             <MetricsPill stats={stats} />
 
-            {/* 3. Graphique d'évolution des flux */}
+            {/* 3. Graphique d'évolution des flux (100% réel et dynamique) */}
             <CashflowChart
               period={period}
               onPeriodChange={setPeriod}
+              transactions={transactions}
             />
 
             {/* 4. Échéances récurrentes à venir du mois */}

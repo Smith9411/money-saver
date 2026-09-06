@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,14 @@ import {
 } from 'react-native';
 import Svg, { Path, Line, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { THEME } from '../constants/theme';
-import { TimePeriod } from '../types';
+import { TimePeriod, Transaction } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { triggerHaptic } from '../services/haptics';
 
 interface CashflowChartProps {
   period: TimePeriod;
   onPeriodChange: (p: TimePeriod) => void;
-  dataPoints?: { label: string; amount: number }[];
+  transactions: Transaction[];
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,43 +25,102 @@ const CHART_HEIGHT = 160;
 export const CashflowChart: React.FC<CashflowChartProps> = ({
   period,
   onPeriodChange,
+  transactions,
 }) => {
-  // Données représentatives selon la période
-  const weekData = [
-    { label: 'Lun', amount: 45 },
-    { label: 'Mar', amount: 28 },
-    { label: 'Mer', amount: 52 },
-    { label: 'Jeu', amount: 89 }, // Pic
-    { label: 'Ven', amount: 40 },
-    { label: 'Sam', amount: 35 },
-    { label: 'Dim', amount: 62 },
-  ];
+  // Calcul dynamique des vraies dépenses selon la période
+  const currentData = useMemo(() => {
+    const expenses = transactions.filter((tx) => tx.type === 'expense');
 
-  const monthData = [
-    { label: 'Sem 1', amount: 320 },
-    { label: 'Sem 2', amount: 450 },
-    { label: 'Sem 3', amount: 610 },
-    { label: 'Sem 4', amount: 280 },
-  ];
+    if (period === 'week') {
+      // 7 jours : Lun, Mar, Mer, Jeu, Ven, Sam, Dim
+      const daysLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+      const now = new Date();
+      const currentDayOfWeek = (now.getDay() + 6) % 7; // 0 = Lundi, 6 = Dimanche
 
-  const currentData = period === 'month' ? monthData : weekData;
+      // Initialiser chaque jour de la semaine courante
+      const result = daysLabels.map((label, index) => {
+        const d = new Date(now);
+        d.setDate(now.getDate() - (currentDayOfWeek - index));
+        const dateKey = d.toISOString().split('T')[0];
 
-  // Index sélectionné (par défaut le point le plus haut comme sur l'image de référence)
-  const maxIdx = currentData.reduce(
-    (maxI, el, i, arr) => (el.amount > arr[maxI].amount ? i : maxI),
-    0
-  );
+        // Sommer les vraies dépenses ayant cette date exacte
+        const dayTotal = expenses
+          .filter((tx) => tx.date === dateKey)
+          .reduce((sum, tx) => sum + tx.amount, 0);
+
+        return {
+          label,
+          amount: Math.round(dayTotal * 100) / 100,
+          dateKey,
+        };
+      });
+
+      return result;
+    } else {
+      // 4 semaines du mois
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      const weeks = [
+        { label: 'Sem 1', startDay: 1, endDay: 7 },
+        { label: 'Sem 2', startDay: 8, endDay: 14 },
+        { label: 'Sem 3', startDay: 15, endDay: 21 },
+        { label: 'Sem 4', startDay: 22, endDay: 31 },
+      ];
+
+      return weeks.map((w) => {
+        const weekTotal = expenses
+          .filter((tx) => {
+            const txD = new Date(tx.date);
+            return (
+              txD.getFullYear() === currentYear &&
+              txD.getMonth() === currentMonth &&
+              txD.getDate() >= w.startDay &&
+              txD.getDate() <= w.endDay
+            );
+          })
+          .reduce((sum, tx) => sum + tx.amount, 0);
+
+        return {
+          label: w.label,
+          amount: Math.round(weekTotal * 100) / 100,
+        };
+      });
+    }
+  }, [transactions, period]);
+
+  // Index du montant le plus élevé (ou le dernier jour avec dépense)
+  const maxIdx = useMemo(() => {
+    let best = 0;
+    for (let i = 0; i < currentData.length; i++) {
+      if (currentData[i].amount > currentData[best].amount) {
+        best = i;
+      }
+    }
+    return best;
+  }, [currentData]);
+
   const [selectedIndex, setSelectedIndex] = useState<number>(maxIdx);
+
+  // Mettre à jour la sélection quand les données changent
+  React.useEffect(() => {
+    setSelectedIndex(maxIdx);
+  }, [maxIdx, period]);
 
   const paddingHorizontal = 18;
   const usableWidth = CHART_WIDTH - paddingHorizontal * 2;
-  const maxAmount = Math.max(...currentData.map((d) => d.amount)) * 1.25;
+  const rawMax = Math.max(...currentData.map((d) => d.amount), 10);
+  const maxAmount = rawMax * 1.2;
   const minAmount = 0;
 
-  // Calcul des coordonnées
+  // Calcul des coordonnées SVG réelles
   const points = currentData.map((d, index) => {
     const x = paddingHorizontal + (index / (currentData.length - 1)) * usableWidth;
-    const y = CHART_HEIGHT - ((d.amount - minAmount) / (maxAmount - minAmount)) * (CHART_HEIGHT - 45) - 20;
+    const y =
+      CHART_HEIGHT -
+      ((d.amount - minAmount) / (maxAmount - minAmount)) * (CHART_HEIGHT - 50) -
+      24;
     return { x, y, label: d.label, amount: d.amount };
   });
 
@@ -81,21 +141,20 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
   };
 
   const linePath = createSmoothPath(points);
-
-  // Surface dégradée sous la courbe
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${CHART_HEIGHT} L ${points[0].x} ${CHART_HEIGHT} Z`;
 
-  const activePoint = points[selectedIndex] || points[maxIdx];
+  const activePoint = points[selectedIndex] || points[0];
 
   const cyclePeriod = () => {
+    triggerHaptic('light');
     if (period === 'week') {
       onPeriodChange('month');
-      setSelectedIndex(2);
     } else {
       onPeriodChange('week');
-      setSelectedIndex(3);
     }
   };
+
+  const totalPeriod = currentData.reduce((sum, d) => sum + d.amount, 0);
 
   return (
     <View style={styles.container}>
@@ -104,7 +163,8 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
         <View>
           <Text style={styles.sectionTitle}>Aperçu des dépenses</Text>
           <Text style={styles.sectionSubtitle}>
-            {period === 'week' ? 'Vos dépenses de la semaine' : 'Vos dépenses mensuelles'}
+            Total sur la période :{' '}
+            <Text style={styles.totalBold}>{totalPeriod.toFixed(2)} €</Text>
           </Text>
         </View>
 
@@ -120,22 +180,22 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Zone Graphique */}
+      {/* Zone Graphique SVG dynamique */}
       <View style={styles.chartContainer}>
-        {/* Tooltip badge noir flottant (fidèle au design de référence) */}
+        {/* Tooltip badge noir flottant indiquant le vrai montant */}
         {activePoint && (
           <View
             style={[
               styles.floatingBadge,
               {
-                left: Math.max(10, Math.min(CHART_WIDTH - 85, activePoint.x - 38)),
+                left: Math.max(10, Math.min(CHART_WIDTH - 90, activePoint.x - 38)),
                 top: Math.max(0, activePoint.y - 36),
               },
             ]}
           >
             <View style={styles.badgeContent}>
               <Ionicons name="arrow-up" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
-              <Text style={styles.badgeText}>{activePoint.amount} €</Text>
+              <Text style={styles.badgeText}>{activePoint.amount.toFixed(2)} €</Text>
             </View>
             <View style={styles.badgeArrow} />
           </View>
@@ -144,7 +204,7 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
         <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
           <Defs>
             <LinearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#111111" stopOpacity="0.04" />
+              <Stop offset="0%" stopColor="#111111" stopOpacity="0.05" />
               <Stop offset="100%" stopColor="#111111" stopOpacity="0.0" />
             </LinearGradient>
           </Defs>
@@ -164,10 +224,10 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
             />
           ))}
 
-          {/* Remplissage gradient sous la courbe */}
+          {/* Surface sous la courbe */}
           <Path d={areaPath} fill="url(#chartGradient)" />
 
-          {/* Ligne principale de la courbe */}
+          {/* Courbe continue noire */}
           <Path
             d={linePath}
             fill="none"
@@ -183,28 +243,26 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
               <Circle
                 cx={activePoint.x}
                 cy={activePoint.y}
-                r={6.5}
+                r={6}
                 fill="#FFFFFF"
                 stroke="#111111"
-                strokeWidth={2.5}
+                strokeWidth={2.4}
               />
-              <Circle
-                cx={activePoint.x}
-                cy={activePoint.y}
-                r={2.5}
-                fill="#111111"
-              />
+              <Circle cx={activePoint.x} cy={activePoint.y} r={2.5} fill="#111111" />
             </>
           )}
         </Svg>
 
-        {/* Axe des abscisses (étiquettes interactives au toucher) */}
+        {/* Axe des abscisses interactif */}
         <View style={styles.labelsRow}>
           {points.map((pt, index) => (
             <TouchableOpacity
               key={`label-${index}`}
               activeOpacity={0.6}
-              onPress={() => setSelectedIndex(index)}
+              onPress={() => {
+                triggerHaptic('selection');
+                setSelectedIndex(index);
+              }}
               style={[
                 styles.labelBtn,
                 { width: usableWidth / currentData.length },
@@ -253,6 +311,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 2,
+  },
+  totalBold: {
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
   },
   periodPill: {
     flexDirection: 'row',

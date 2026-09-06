@@ -37,24 +37,14 @@ export const Header: React.FC<HeaderProps> = ({
           </View>
         </TouchableOpacity>
 
-        {/* Boutons d'action en haut à droite (comme sur le design) */}
+        {/* Bouton calendrier / analyses épuré */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.pillActionBtn}
+            style={styles.calendarActionBtn}
             activeOpacity={0.7}
             onPress={onCalendarPress}
           >
-            <Ionicons name="calendar-outline" size={17} color={THEME.colors.textPrimary} />
-            <View style={styles.divider} />
-            <Ionicons name="search-outline" size={17} color={THEME.colors.textPrimary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.circleActionBtn}
-            activeOpacity={0.7}
-            onPress={onOptionsPress}
-          >
-            <Ionicons name="grid-outline" size={17} color={THEME.colors.textPrimary} />
+            <Ionicons name="calendar-outline" size={18} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -112,24 +102,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  pillActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: THEME.radius.full,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    ...THEME.shadows.subtle,
-  },
-  divider: {
-    width: 1,
-    height: 14,
-    backgroundColor: THEME.colors.border,
-    marginHorizontal: 10,
-  },
-  circleActionBtn: {
+  calendarActionBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,

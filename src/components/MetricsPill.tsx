@@ -33,16 +33,6 @@ export const MetricsPill: React.FC<MetricsPillProps> = ({ stats }) => {
         </View>
         <Text style={styles.labelText}>Revenus</Text>
       </View>
-
-      <View style={styles.separator} />
-
-      {/* 3. Taux d'épargne */}
-      <View style={styles.metricItem}>
-        <View style={styles.valueRow}>
-          <Text style={styles.valueText}>{stats.savingsRate}%</Text>
-        </View>
-        <Text style={styles.labelText}>Épargne</Text>
-      </View>
     </View>
   );
 };
