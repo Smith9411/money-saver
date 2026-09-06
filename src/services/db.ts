@@ -8,6 +8,7 @@ import {
 } from '../types';
 
 let dbInstance: any = null;
+let isInitializing = false;
 
 // Mémoire de secours en cas d'indisponibilité SQLite (commence vide pour une app propre)
 let memoryTransactions: Transaction[] = [];
@@ -16,6 +17,13 @@ const memorySettings: Record<string, string> = {
 };
 
 export async function initDatabase(): Promise<void> {
+  if (dbInstance) {
+    return;
+  }
+  if (isInitializing) {
+    return;
+  }
+  isInitializing = true;
   try {
     if (typeof SQLite.openDatabaseSync === 'function') {
       dbInstance = SQLite.openDatabaseSync('money_saver.db');
@@ -170,9 +178,11 @@ export async function addTransaction(
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
+  if (!id) return;
   try {
     if (dbInstance) {
-      dbInstance.runSync('DELETE FROM transactions WHERE id = ?;', [id]);
+      const sanitizedId = String(id).replace(/'/g, "''");
+      dbInstance.execSync(`DELETE FROM transactions WHERE id = '${sanitizedId}';`);
     }
   } catch (e) {
     console.warn('Error deleting from SQLite:', e);

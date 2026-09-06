@@ -12,7 +12,6 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiKey, setApiKey } from '../services/aiReceiptScanner';
 import { triggerHaptic } from '../services/haptics';
 import { useTheme } from '../context/ThemeContext';
 
@@ -38,8 +37,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const { theme, themeId, changeTheme, availableThemes } = useTheme();
   const [nameInput, setNameInput] = useState(userName);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
-  const [isSaved, setIsSaved] = useState(false);
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const [themeFilter, setThemeFilter] = useState<'all' | 'light' | 'dark'>('all');
 
@@ -122,17 +119,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     onSaveUserName(nameInput.trim());
     setIsEditingName(false);
     Alert.alert('Profil mis à jour', `Votre prénom est désormais "${nameInput.trim()}".`);
-  };
-
-  const handleSaveKey = () => {
-    triggerHaptic('success');
-    setApiKey(apiKeyInput.trim());
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
-    Alert.alert(
-      'Clé enregistrée',
-      'Votre clé Gemini est active pour scanner et lire vos vrais tickets de caisse !'
-    );
   };
 
   const handleConfirmReset = () => {
@@ -473,66 +459,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
       </View>
 
-      {/* Section IA Vision pour les tickets */}
-      <View
-        style={[
-          styles.sectionCard,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.border,
-            borderRadius: theme.cardRadius,
-          },
-        ]}
-      >
-        <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
-            <Ionicons name="sparkles" size={18} color={theme.colors.textPrimary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>IA Scanner de tickets</Text>
-            <Text style={[styles.sectionDesc, { color: theme.colors.textSecondary }]}>Google Gemini Vision</Text>
-          </View>
-        </View>
-
-        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Clé d'API Google AI Studio</Text>
-        <TextInput
-          style={[
-            styles.keyInput,
-            {
-              backgroundColor: theme.colors.surfaceSubtle,
-              borderColor: theme.colors.border,
-              color: theme.colors.textPrimary,
-            },
-          ]}
-          placeholder="Ex: AIzaSyD... (Collez votre clé ici)"
-          placeholderTextColor={theme.colors.textMuted}
-          value={apiKeyInput}
-          onChangeText={setApiKeyInput}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry={apiKeyInput.length > 0}
-        />
-
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: theme.colors.accent }]}
-          activeOpacity={0.85}
-          onPress={handleSaveKey}
-        >
-          <Text
-            style={[
-              styles.saveBtnText,
-              {
-                color: theme.isDark && theme.id === 'midnight-titanium'
-                  ? '#000000'
-                  : '#FFFFFF',
-              },
-            ]}
-          >
-            {isSaved ? '✓ Clé enregistrée' : 'Enregistrer la clé'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Statistiques de stockage local */}
       <View
         style={[
@@ -749,36 +675,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textSecondary,
     marginTop: 1,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  keyInput: {
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: THEME.radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 13,
-    color: THEME.colors.textPrimary,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
-    marginBottom: 12,
-  },
-  saveBtn: {
-    backgroundColor: '#111111',
-    borderRadius: THEME.radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
   },
   statRow: {
     flexDirection: 'row',
