@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "money-saver",
-    "slug": "money-saver",
+    "name": "Budget",
+    "slug": "budget",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "moneysaver",
+    "scheme": "budget",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
