@@ -72,22 +72,24 @@ export default function Index() {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Traiter un ticket scanné
-  const handleReceiptScanned = async (data: {
-    title: string;
-    amount: number;
-    category: TransactionCategory;
+  // Traiter et sauvegarder un ticket scanné avec ses articles retenus
+  const handleSaveReceipt = async (data: {
+    merchant: string;
+    totalAmount: number;
+    items: any[];
     date: string;
+    category: TransactionCategory;
   }) => {
     const created = await addTransaction({
-      ...data,
+      title: data.merchant || 'Ticket de caisse',
+      amount: data.totalAmount,
       type: 'expense',
+      category: data.category || 'food',
+      date: data.date,
+      merchant: data.merchant,
+      note: `${data.items.length} article(s) scanné(s)`,
     });
     setTransactions((prev) => [created, ...prev]);
-    Alert.alert(
-      'Ticket scanné avec succès !',
-      `${data.title} (${data.amount.toFixed(2)} €) a été ajouté à vos dépenses.`
-    );
   };
 
   return (
@@ -157,11 +159,11 @@ export default function Index() {
           onAdd={handleAddTransaction}
         />
 
-        {/* Modale de simulation de scanner de reçu */}
+        {/* Modale de simulation et d'analyse de ticket de caisse */}
         <ReceiptScannerModal
           visible={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
-          onReceiptScanned={handleReceiptScanned}
+          onSaveReceipt={handleSaveReceipt}
         />
       </View>
     </SafeAreaView>

@@ -48,3 +48,18 @@ export interface CategoryBudget {
   iconName: string;
   color: string;
 }
+
+export interface ReceiptItem {
+  id: string;
+  name: string;
+  price: number;
+  selected: boolean;
+  category: TransactionCategory;
+}
+
+export interface ParsedReceipt {
+  merchant: string;
+  date: string;
+  items: ReceiptItem[];
+  imageUri?: string;
+}

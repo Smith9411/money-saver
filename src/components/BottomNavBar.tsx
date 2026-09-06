@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { triggerHaptic } from '../services/haptics';
 
 export type NavTab = 'home' | 'analytics' | 'scanner' | 'profile';
 
@@ -18,6 +19,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   onSelectTab,
   onAddPress,
 }) => {
+  const handleTabPress = (tab: NavTab) => {
+    triggerHaptic('selection');
+    onSelectTab(tab);
+  };
+
+  const handleAddPress = () => {
+    triggerHaptic('medium');
+    onAddPress();
+  };
+
   return (
     <View style={styles.floatingWrapper}>
       <View style={styles.navBar}>
@@ -25,7 +36,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <TouchableOpacity
           style={styles.navItem}
           activeOpacity={0.7}
-          onPress={() => onSelectTab('home')}
+          onPress={() => handleTabPress('home')}
         >
           <Ionicons
             name={currentTab === 'home' ? 'home' : 'home-outline'}
@@ -46,7 +57,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <TouchableOpacity
           style={styles.navItem}
           activeOpacity={0.7}
-          onPress={() => onSelectTab('analytics')}
+          onPress={() => handleTabPress('analytics')}
         >
           <Ionicons
             name={currentTab === 'analytics' ? 'bar-chart' : 'bar-chart-outline'}
@@ -67,7 +78,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <TouchableOpacity
           style={styles.centerButton}
           activeOpacity={0.85}
-          onPress={onAddPress}
+          onPress={handleAddPress}
         >
           <View style={styles.centerButtonInner}>
             <Ionicons name="sparkles" size={20} color="#FFFFFF" />
@@ -78,7 +89,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <TouchableOpacity
           style={styles.navItem}
           activeOpacity={0.7}
-          onPress={() => onSelectTab('scanner')}
+          onPress={() => handleTabPress('scanner')}
         >
           <Ionicons
             name={currentTab === 'scanner' ? 'scan' : 'scan-outline'}
@@ -99,7 +110,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         <TouchableOpacity
           style={styles.navItem}
           activeOpacity={0.7}
-          onPress={() => onSelectTab('profile')}
+          onPress={() => handleTabPress('profile')}
         >
           <Ionicons
             name={currentTab === 'profile' ? 'person' : 'person-outline'}
