@@ -5,102 +5,22 @@ import {
   CategoryBudget,
   TimePeriod,
   UpcomingPayment,
-  ReceiptItem,
 } from '../types';
 
 let dbInstance: any = null;
 
-// Données initiales enrichies avec des paiements récurrents et des articles de tickets
-let fallbackTransactions: Transaction[] = [
-  {
-    id: '1',
-    title: 'Monoprix Gourmet',
-    amount: 54.20,
-    type: 'expense',
-    category: 'food',
-    date: '2026-09-06',
-    merchant: 'Monoprix',
-    note: '5 article(s) scanné(s)',
-    items: [
-      { id: 'it-1', name: 'Pain de campagne bio', price: 2.80, selected: true, category: 'food' },
-      { id: 'it-2', name: 'Café grains Arabica 250g', price: 5.40, selected: true, category: 'food' },
-      { id: 'it-3', name: 'Huile d’olive vierge extra', price: 8.90, selected: true, category: 'food' },
-      { id: 'it-4', name: 'Chaussettes coton x3', price: 12.00, selected: true, category: 'shopping' },
-      { id: 'it-5', name: 'Jus d’orange frais', price: 3.50, selected: true, category: 'food' },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Abonnement Spotify',
-    amount: 10.99,
-    type: 'expense',
-    category: 'leisure',
-    date: '2026-09-05',
-    merchant: 'Spotify',
-    isRecurring: true,
-    recurringDay: 12,
-  },
-  {
-    id: '3',
-    title: 'Virement Salaire',
-    amount: 2850.00,
-    type: 'income',
-    category: 'salary',
-    date: '2026-09-01',
-    merchant: 'Entreprise SA',
-    isRecurring: true,
-    recurringDay: 28,
-  },
-  {
-    id: '4',
-    title: 'Loyer Appartement',
-    amount: 780.00,
-    type: 'expense',
-    category: 'housing',
-    date: '2026-09-01',
-    merchant: 'Propriétaire',
-    isRecurring: true,
-    recurringDay: 5,
-  },
-  {
-    id: '5',
-    title: 'Forfait Mobile 5G',
-    amount: 19.99,
-    type: 'expense',
-    category: 'leisure',
-    date: '2026-09-02',
-    merchant: 'Opérateur',
-    isRecurring: true,
-    recurringDay: 18,
-  },
-  {
-    id: '6',
-    title: 'Pass Navigo Transport',
-    amount: 86.40,
-    type: 'expense',
-    category: 'transport',
-    date: '2026-09-02',
-    merchant: 'Régie Transports',
-    isRecurring: true,
-    recurringDay: 2,
-  },
-  {
-    id: '7',
-    title: 'Abonnement Box Internet',
-    amount: 29.99,
-    type: 'expense',
-    category: 'housing',
-    date: '2026-09-03',
-    merchant: 'Fournisseur Internet',
-    isRecurring: true,
-    recurringDay: 22,
-  },
-];
+// Mémoire de secours en cas d'indisponibilité SQLite (commence vide pour une app propre)
+let memoryTransactions: Transaction[] = [];
+const memorySettings: Record<string, string> = {
+  user_name: 'Alexandre',
+};
 
 export async function initDatabase(): Promise<void> {
   try {
     if (typeof SQLite.openDatabaseSync === 'function') {
       dbInstance = SQLite.openDatabaseSync('money_saver.db');
+
+      // Table des transactions
       dbInstance.execSync(`
         CREATE TABLE IF NOT EXISTS transactions (
           id TEXT PRIMARY KEY NOT NULL,
@@ -117,7 +37,15 @@ export async function initDatabase(): Promise<void> {
         );
       `);
 
-      // Migration non-bloquante au cas où la table existait déjà avec l'ancien schéma
+      // Table des réglages (profil, devises, api keys...)
+      dbInstance.execSync(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL
+        );
+      `);
+
+      // Migrations non-bloquantes
       try {
         dbInstance.execSync(`ALTER TABLE transactions ADD COLUMN items TEXT;`);
       } catch {}
@@ -127,37 +55,54 @@ export async function initDatabase(): Promise<void> {
       try {
         dbInstance.execSync(`ALTER TABLE transactions ADD COLUMN recurring_day INTEGER;`);
       } catch {}
-
-      // Vérifier si la table est vide pour initialiser les données de démonstration
-      const countResult: any = dbInstance.getFirstSync(
-        'SELECT COUNT(*) as count FROM transactions;'
-      );
-
-      if (countResult && countResult.count === 0) {
-        for (const item of fallbackTransactions) {
-          dbInstance.runSync(
-            `INSERT INTO transactions (id, title, amount, type, category, date, merchant, note, items, is_recurring, recurring_day)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-            [
-              item.id,
-              item.title,
-              item.amount,
-              item.type,
-              item.category,
-              item.date,
-              item.merchant || '',
-              item.note || '',
-              item.items ? JSON.stringify(item.items) : null,
-              item.isRecurring ? 1 : 0,
-              item.recurringDay || null,
-            ]
-          );
-        }
-      }
     }
   } catch (error) {
     console.warn('SQLite init warning (using memory storage fallback):', error);
   }
+}
+
+// Gestion des réglages (ex: nom d'utilisateur)
+export async function getSetting(key: string, defaultValue = ''): Promise<string> {
+  try {
+    if (dbInstance) {
+      const row: any = dbInstance.getFirstSync(
+        'SELECT value FROM settings WHERE key = ?;',
+        [key]
+      );
+      if (row && row.value !== undefined) {
+        return row.value;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading setting from SQLite:', e);
+  }
+  return memorySettings[key] !== undefined ? memorySettings[key] : defaultValue;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  memorySettings[key] = value;
+  try {
+    if (dbInstance) {
+      dbInstance.runSync(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?);',
+        [key, value]
+      );
+    }
+  } catch (e) {
+    console.warn('Error saving setting to SQLite:', e);
+  }
+}
+
+// Réinitialiser toutes les données pour repartir de zéro
+export async function resetAllData(): Promise<void> {
+  try {
+    if (dbInstance) {
+      dbInstance.execSync('DELETE FROM transactions;');
+    }
+  } catch (e) {
+    console.warn('Error resetting transactions in SQLite:', e);
+  }
+  memoryTransactions = [];
 }
 
 export async function getTransactions(): Promise<Transaction[]> {
@@ -175,7 +120,7 @@ export async function getTransactions(): Promise<Transaction[]> {
         date: row.date,
         merchant: row.merchant,
         note: row.note,
-        items: row.items ? JSON.parse(row.items) : undefined,
+        items: row.items ? (typeof row.items === 'string' ? JSON.parse(row.items) : row.items) : undefined,
         isRecurring: Boolean(row.is_recurring),
         recurringDay: row.recurring_day || undefined,
       }));
@@ -183,7 +128,7 @@ export async function getTransactions(): Promise<Transaction[]> {
   } catch (e) {
     console.warn('Error reading from SQLite, using memory fallback:', e);
   }
-  return [...fallbackTransactions].sort(
+  return [...memoryTransactions].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 }
@@ -220,7 +165,7 @@ export async function addTransaction(
     console.warn('Error inserting to SQLite, saving to fallback:', e);
   }
 
-  fallbackTransactions.unshift(newTx);
+  memoryTransactions.unshift(newTx);
   return newTx;
 }
 
@@ -232,7 +177,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   } catch (e) {
     console.warn('Error deleting from SQLite:', e);
   }
-  fallbackTransactions = fallbackTransactions.filter((tx) => tx.id !== id);
+  memoryTransactions = memoryTransactions.filter((tx) => tx.id !== id);
 }
 
 export function computeStats(transactions: Transaction[], period: TimePeriod): PeriodStats {
@@ -277,7 +222,7 @@ export function computeStats(transactions: Transaction[], period: TimePeriod): P
   };
 }
 
-// Calcul des prochaines échéances récurrentes du mois en cours
+// Calcul des prochaines échéances récurrentes du mois
 export function getUpcomingPayments(transactions: Transaction[]): {
   upcoming: UpcomingPayment[];
   totalUpcomingExpenses: number;
@@ -295,7 +240,6 @@ export function getUpcomingPayments(transactions: Transaction[]): {
     const day = tx.recurringDay || 1;
     let daysRemaining = day - currentDay;
 
-    // Si le jour de prélèvement est déjà passé ce mois-ci, calcule le prochain prélèvement pour le mois suivant
     if (daysRemaining < 0) {
       daysRemaining = daysInMonth - currentDay + day;
     }
@@ -315,7 +259,6 @@ export function getUpcomingPayments(transactions: Transaction[]): {
     });
   }
 
-  // Trier par échéance la plus proche (0 jour, 1 jour, 2 jours...)
   upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
 
   return {

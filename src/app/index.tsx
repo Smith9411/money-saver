@@ -15,6 +15,9 @@ import {
   computeStats,
   getCategoryBudgets,
   getUpcomingPayments,
+  getSetting,
+  setSetting,
+  resetAllData,
 } from '../services/db';
 
 import { Header } from '../components/Header';
@@ -34,6 +37,7 @@ export default function Index() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [period, setPeriod] = useState<TimePeriod>('week');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [userName, setUserName] = useState<string>('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
@@ -44,6 +48,8 @@ export default function Index() {
       await initDatabase();
       const loaded = await getTransactions();
       setTransactions(loaded);
+      const savedName = await getSetting('user_name', '');
+      setUserName(savedName);
     };
     loadData();
   }, []);
@@ -62,6 +68,20 @@ export default function Index() {
   const budgets = useMemo(() => {
     return getCategoryBudgets(transactions);
   }, [transactions]);
+
+  // Enregistrer le prénom de l'utilisateur
+  const handleSaveUserName = async (name: string) => {
+    setUserName(name);
+    await setSetting('user_name', name);
+  };
+
+  // Remise à zéro complète de l'application
+  const handleResetAllData = async () => {
+    await resetAllData();
+    setTransactions([]);
+    setSelectedTxForReceipt(null);
+    setCurrentTab('home');
+  };
 
   // Ajouter une transaction manuelle (avec support récurrent)
   const handleAddTransaction = async (data: {
@@ -111,6 +131,9 @@ export default function Index() {
           <ProfileView
             onBack={() => setCurrentTab('home')}
             transactionsCount={transactions.length}
+            userName={userName}
+            onSaveUserName={handleSaveUserName}
+            onResetAllData={handleResetAllData}
           />
         ) : currentTab === 'analytics' ? (
           <AnalyticsView
@@ -130,6 +153,8 @@ export default function Index() {
               onCalendarPress={() => setCurrentTab('analytics')}
               onSearchPress={() => setIsAddModalOpen(true)}
               onOptionsPress={() => setPeriod(period === 'week' ? 'month' : 'week')}
+              onProfilePress={() => setCurrentTab('profile')}
+              userName={userName}
             />
 
             {/* 2. Métriques clés en pilule (Dépenses, Revenus, Épargne) */}
@@ -141,7 +166,7 @@ export default function Index() {
               onPeriodChange={setPeriod}
             />
 
-            {/* 4. Échéances récurrentes à venir du mois (Nouveau !) */}
+            {/* 4. Échéances récurrentes à venir du mois */}
             <UpcomingPaymentsSection
               upcoming={upcomingData.upcoming}
               totalUpcomingExpenses={upcomingData.totalUpcomingExpenses}

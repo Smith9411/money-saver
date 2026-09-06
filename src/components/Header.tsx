@@ -7,6 +7,7 @@ interface HeaderProps {
   onCalendarPress?: () => void;
   onSearchPress?: () => void;
   onOptionsPress?: () => void;
+  onProfilePress?: () => void;
   dateText?: string;
   userName?: string;
 }
@@ -15,21 +16,26 @@ export const Header: React.FC<HeaderProps> = ({
   onCalendarPress,
   onSearchPress,
   onOptionsPress,
+  onProfilePress,
   dateText = 'Dim. 6 Septembre',
-  userName = 'Alexandre',
+  userName = '',
 }) => {
   return (
     <View style={styles.container}>
       {/* Profil avatar & salutation */}
       <View style={styles.topRow}>
-        <View style={styles.profileSection}>
+        <TouchableOpacity
+          style={styles.profileSection}
+          activeOpacity={0.8}
+          onPress={onProfilePress}
+        >
           <View style={styles.avatarContainer}>
             {/* Silhouette / Avatar ultra élégant */}
             <View style={styles.avatarInner}>
               <Ionicons name="person" size={20} color="#FFFFFF" />
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Boutons d'action en haut à droite (comme sur le design) */}
         <View style={styles.actionButtons}>
@@ -56,7 +62,11 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Titre & Date */}
       <View style={styles.greetingContainer}>
         <Text style={styles.dateLabel}>{dateText}</Text>
-        <Text style={styles.greetingTitle}>Bonjour, {userName}</Text>
+        <Text style={styles.greetingTitle}>
+          {userName && userName.trim().length > 0
+            ? `Bonjour, ${userName.trim()}`
+            : 'Bonjour,'}
+        </Text>
       </View>
     </View>
   );

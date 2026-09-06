@@ -16,14 +16,29 @@ import { triggerHaptic } from '../services/haptics';
 interface ProfileViewProps {
   onBack: () => void;
   transactionsCount: number;
+  userName: string;
+  onSaveUserName: (name: string) => void;
+  onResetAllData: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   onBack,
   transactionsCount,
+  userName,
+  onSaveUserName,
+  onResetAllData,
 }) => {
+  const [nameInput, setNameInput] = useState(userName);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
   const [isSaved, setIsSaved] = useState(false);
+
+  const handleSaveName = () => {
+    triggerHaptic('success');
+    onSaveUserName(nameInput.trim());
+    setIsEditingName(false);
+    Alert.alert('Profil mis à jour', `Votre prénom est désormais "${nameInput.trim()}".`);
+  };
 
   const handleSaveKey = () => {
     triggerHaptic('success');
@@ -33,6 +48,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     Alert.alert(
       'Clé enregistrée',
       'Votre clé Gemini est active pour scanner et lire vos vrais tickets de caisse !'
+    );
+  };
+
+  const handleConfirmReset = () => {
+    triggerHaptic('heavy');
+    Alert.alert(
+      'Réinitialiser toutes les données ?',
+      'Cette action va effacer toutes les transactions et remettre l’application à zéro, comme si vous veniez de l’installer.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Tout effacer',
+          style: 'destructive',
+          onPress: () => {
+            onResetAllData();
+            Alert.alert('Remise à zéro effectuée', 'Toutes les dépenses ont été effacées.');
+          },
+        },
+      ]
     );
   };
 
@@ -47,12 +81,39 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Carte utilisateur minimaliste */}
+      {/* Carte utilisateur minimaliste personnalisable */}
       <View style={styles.userCard}>
         <View style={styles.avatarLarge}>
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </View>
-        <Text style={styles.userName}>Alexandre</Text>
+
+        {isEditingName ? (
+          <View style={styles.nameEditBox}>
+            <TextInput
+              style={styles.nameInput}
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="Entrez votre prénom..."
+              placeholderTextColor={THEME.colors.textMuted}
+              autoFocus
+            />
+            <TouchableOpacity style={styles.saveNameBtn} onPress={handleSaveName}>
+              <Text style={styles.saveNameBtnText}>Valider</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.nameRow}
+            activeOpacity={0.7}
+            onPress={() => setIsEditingName(true)}
+          >
+            <Text style={styles.userName}>
+              {userName && userName.trim().length > 0 ? userName : 'Définir mon prénom'}
+            </Text>
+            <Ionicons name="pencil-outline" size={16} color={THEME.colors.textSecondary} style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.userSub}>Données stockées localement sur cet appareil</Text>
 
         <View style={styles.badgeLocal}>
@@ -69,9 +130,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.sectionTitle}>IA Scanner de tickets</Text>
-            <Text style={styles.sectionDesc}>
-              Google Gemini Vision (100% gratuit)
-            </Text>
+            <Text style={styles.sectionDesc}>Google Gemini Vision</Text>
           </View>
         </View>
 
@@ -96,10 +155,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {isSaved ? '✓ Clé enregistrée' : 'Enregistrer la clé'}
           </Text>
         </TouchableOpacity>
-
-        <Text style={styles.infoHint}>
-          Obtenez votre clé gratuite en 30 secondes sur https://aistudio.google.com
-        </Text>
       </View>
 
       {/* Statistiques de stockage local */}
@@ -117,6 +172,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <Text style={styles.statLabel}>Devise active</Text>
           <Text style={styles.statValue}>Euro (€)</Text>
         </View>
+      </View>
+
+      {/* Bouton de remise à zéro complète de l'application */}
+      <View style={styles.dangerSection}>
+        <TouchableOpacity
+          style={styles.resetAppBtn}
+          activeOpacity={0.8}
+          onPress={handleConfirmReset}
+        >
+          <Ionicons name="refresh-outline" size={18} color={THEME.colors.expenseText} />
+          <Text style={styles.resetAppBtnText}>
+            Remettre l’application à zéro (tout effacer)
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.resetHint}>
+          Efface toutes les transactions pour repartir d'une installation vierge.
+        </Text>
       </View>
 
       <View style={{ height: 120 }} />
@@ -171,10 +243,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   userName: {
     fontSize: 20,
     fontWeight: '700',
     color: THEME.colors.textPrimary,
+  },
+  nameEditBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
+  nameInput: {
+    flex: 1,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderRadius: THEME.radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: '#111111',
+    textAlign: 'center',
+  },
+  saveNameBtn: {
+    backgroundColor: '#111111',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: THEME.radius.sm,
+  },
+  saveNameBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
   },
   userSub: {
     fontSize: 12,
@@ -260,12 +368,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  infoHint: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    marginTop: 8,
-    textAlign: 'center',
-  },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -281,5 +383,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: THEME.colors.textPrimary,
+  },
+  dangerSection: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  resetAppBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: THEME.radius.lg,
+    backgroundColor: THEME.colors.expenseBg,
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+  },
+  resetAppBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.expenseText,
+  },
+  resetHint: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });
