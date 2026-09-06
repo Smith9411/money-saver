@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 export type NavTab = 'home' | 'analytics' | 'scanner' | 'profile';
 
@@ -19,6 +20,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   onSelectTab,
   onAddPress,
 }) => {
+  const { theme } = useTheme();
   const handleTabPress = (tab: NavTab) => {
     triggerHaptic('selection');
     onSelectTab(tab);
@@ -31,7 +33,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   return (
     <View style={styles.floatingWrapper}>
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         {/* Onglet 1: Accueil */}
         <TouchableOpacity
           style={styles.navItem}
@@ -41,11 +43,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'home' ? 'home' : 'home-outline'}
             size={22}
-            color={currentTab === 'home' ? THEME.colors.textPrimary : THEME.colors.textSecondary}
+            color={currentTab === 'home' ? theme.colors.accent : theme.colors.textSecondary}
           />
           <Text
             style={[
               styles.navLabel,
+              { color: currentTab === 'home' ? theme.colors.accent : theme.colors.textSecondary },
               currentTab === 'home' && styles.navLabelActive,
             ]}
           >
@@ -62,11 +65,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'analytics' ? 'bar-chart' : 'bar-chart-outline'}
             size={22}
-            color={currentTab === 'analytics' ? THEME.colors.textPrimary : THEME.colors.textSecondary}
+            color={currentTab === 'analytics' ? theme.colors.accent : theme.colors.textSecondary}
           />
           <Text
             style={[
               styles.navLabel,
+              { color: currentTab === 'analytics' ? theme.colors.accent : theme.colors.textSecondary },
               currentTab === 'analytics' && styles.navLabelActive,
             ]}
           >
@@ -74,9 +78,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           </Text>
         </TouchableOpacity>
 
-        {/* Bouton Central Noir Flottant (Exactement comme sur la photo de référence) */}
+        {/* Bouton Central Flottant avec couleur d'accent du thème */}
         <TouchableOpacity
-          style={styles.centerButton}
+          style={[styles.centerButton, { backgroundColor: theme.colors.accent }]}
           activeOpacity={0.85}
           onPress={handleAddPress}
         >
@@ -94,11 +98,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'scanner' ? 'scan' : 'scan-outline'}
             size={22}
-            color={currentTab === 'scanner' ? THEME.colors.textPrimary : THEME.colors.textSecondary}
+            color={currentTab === 'scanner' ? theme.colors.accent : theme.colors.textSecondary}
           />
           <Text
             style={[
               styles.navLabel,
+              { color: currentTab === 'scanner' ? theme.colors.accent : theme.colors.textSecondary },
               currentTab === 'scanner' && styles.navLabelActive,
             ]}
           >
@@ -115,11 +120,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'profile' ? 'person' : 'person-outline'}
             size={22}
-            color={currentTab === 'profile' ? THEME.colors.textPrimary : THEME.colors.textSecondary}
+            color={currentTab === 'profile' ? theme.colors.accent : theme.colors.textSecondary}
           />
           <Text
             style={[
               styles.navLabel,
+              { color: currentTab === 'profile' ? theme.colors.accent : theme.colors.textSecondary },
               currentTab === 'profile' && styles.navLabelActive,
             ]}
           >

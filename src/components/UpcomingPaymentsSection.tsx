@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
 import { THEME } from '../constants/theme';
 import { UpcomingPayment } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 interface UpcomingPaymentsSectionProps {
   upcoming: UpcomingPayment[];
@@ -16,6 +18,7 @@ export const UpcomingPaymentsSection: React.FC<UpcomingPaymentsSectionProps> = (
   totalUpcomingExpenses,
   onAddRecurringPress,
 }) => {
+  const { theme } = useTheme();
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'housing':
@@ -43,35 +46,35 @@ export const UpcomingPaymentsSection: React.FC<UpcomingPaymentsSectionProps> = (
       <View style={styles.headerRow}>
         <View>
           <View style={styles.titleWithBadge}>
-            <Text style={styles.sectionTitle}>Échéances à venir</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{upcoming.length}</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Échéances à venir</Text>
+            <View style={[styles.countBadge, { backgroundColor: theme.colors.surfaceSubtle }]}>
+              <Text style={[styles.countBadgeText, { color: theme.colors.textPrimary }]}>{upcoming.length}</Text>
             </View>
           </View>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
             Total prévu d'ici la fin du mois :{' '}
-            <Text style={styles.subtitleBold}>{totalUpcomingExpenses.toFixed(2)} €</Text>
+            <Text style={[styles.subtitleBold, { color: theme.colors.textPrimary }]}>{totalUpcomingExpenses.toFixed(2)} €</Text>
           </Text>
         </View>
 
         {onAddRecurringPress && (
           <TouchableOpacity
-            style={styles.addBtn}
+            style={[styles.addBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
             activeOpacity={0.7}
             onPress={() => {
               triggerHaptic('light');
               onAddRecurringPress();
             }}
           >
-            <Ionicons name="add" size={18} color={THEME.colors.textPrimary} />
+            <Ionicons name="add" size={18} color={theme.colors.textPrimary} />
           </TouchableOpacity>
         )}
       </View>
 
       {/* Défilement horizontal des échéances à venir */}
       {upcoming.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Aucun prélèvement récurrent configuré.</Text>
+        <View style={[styles.emptyCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>Aucun prélèvement récurrent configuré.</Text>
         </View>
       ) : (
         <ScrollView
@@ -79,56 +82,68 @@ export const UpcomingPaymentsSection: React.FC<UpcomingPaymentsSectionProps> = (
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScroll}
         >
-          {upcoming.map((payment) => {
+          {upcoming.map((payment, idx) => {
             const isIncome = payment.type === 'income';
             const isUrgent = payment.daysRemaining <= 3;
 
             return (
-              <View key={payment.id} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View
-                    style={[
-                      styles.daysBadge,
-                      isUrgent && styles.daysBadgeUrgent,
-                      isIncome && styles.daysBadgeIncome,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.daysBadgeText,
-                        isUrgent && styles.daysBadgeTextUrgent,
-                        isIncome && styles.daysBadgeTextIncome,
-                      ]}
-                    >
-                      {getDaysBadgeText(payment.daysRemaining)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.iconCircle}>
-                    <Ionicons
-                      name={getCategoryIcon(payment.category) as any}
-                      size={15}
-                      color={THEME.colors.textPrimary}
-                    />
-                  </View>
-                </View>
-
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {payment.title}
-                </Text>
-
-                <Text style={styles.cardDate}>Le {payment.dayOfMonth} de chaque mois</Text>
-
-                <Text
+              <Animated.View
+                key={payment.id}
+                entering={FadeInRight.duration(200).delay(Math.min(idx * 40, 200))}
+              >
+                <View
                   style={[
-                    styles.cardAmount,
-                    isIncome ? styles.amountIncome : styles.amountExpense,
+                    styles.card,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.cardRadius,
+                    },
                   ]}
                 >
-                  {isIncome ? '+' : '-'}
-                  {payment.amount.toFixed(2)} €
-                </Text>
-              </View>
+                  <View style={styles.cardTop}>
+                    <View
+                      style={[
+                        styles.daysBadge,
+                        { backgroundColor: isUrgent ? theme.colors.expenseBg : isIncome ? theme.colors.incomeBg : theme.colors.surfaceSubtle },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.daysBadgeText,
+                          { color: isUrgent ? theme.colors.expenseText : isIncome ? theme.colors.incomeText : theme.colors.textPrimary },
+                        ]}
+                      >
+                        {getDaysBadgeText(payment.daysRemaining)}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.iconCircle, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                      <Ionicons
+                        name={getCategoryIcon(payment.category) as any}
+                        size={15}
+                        color={theme.colors.textPrimary}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={[styles.cardTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                    {payment.title}
+                  </Text>
+
+                  <Text style={[styles.cardDate, { color: theme.colors.textSecondary }]}>Le {payment.dayOfMonth} de chaque mois</Text>
+
+                  <Text
+                    style={[
+                      styles.cardAmount,
+                      { color: isIncome ? theme.colors.incomeText : theme.colors.textPrimary },
+                    ]}
+                  >
+                    {isIncome ? '+' : '-'}
+                    {payment.amount.toFixed(2)} €
+                  </Text>
+                </View>
+              </Animated.View>
             );
           })}
         </ScrollView>

@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, { FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { THEME } from '../constants/theme';
 import { Transaction } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -46,87 +48,106 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     }
   };
 
+  const { theme } = useTheme();
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Transactions récentes</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Transactions récentes</Text>
         <TouchableOpacity activeOpacity={0.6} onPress={onViewAll}>
-          <Text style={styles.viewAllText}>Historique</Text>
+          <Text style={[styles.viewAllText, { color: theme.colors.accent }]}>Historique</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.list}>
         {transactions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Aucune transaction enregistrée</Text>
+            <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>Aucune transaction enregistrée</Text>
           </View>
         ) : (
-          transactions.slice(0, 7).map((tx) => {
+          transactions.slice(0, 7).map((tx, idx) => {
             const isIncome = tx.type === 'income';
             const hasReceiptItems = tx.items && tx.items.length > 0;
 
             return (
-              <TouchableOpacity
+              <Animated.View
                 key={tx.id}
-                style={styles.transactionCard}
-                activeOpacity={0.7}
-                onPress={() => onTransactionPress && onTransactionPress(tx)}
+                entering={FadeInDown.duration(220).delay(Math.min(idx * 20, 160))}
+                exiting={FadeOutUp.duration(180)}
+                layout={LinearTransition.duration(240)}
               >
-                <View style={styles.leftCol}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      isIncome ? styles.incomeIconCircle : styles.expenseIconCircle,
-                    ]}
-                  >
-                    <Ionicons
-                      name={getCategoryIcon(tx.category) as any}
-                      size={18}
-                      color={
-                        isIncome ? THEME.colors.incomeText : THEME.colors.textPrimary
-                      }
-                    />
-                  </View>
-
-                  <View style={styles.textContainer}>
-                    <View style={styles.titleLine}>
-                      <Text style={styles.txTitle}>{tx.title}</Text>
-                      {hasReceiptItems && (
-                        <View style={styles.receiptTag}>
-                          <Ionicons name="receipt" size={10} color="#111111" />
-                          <Text style={styles.receiptTagText}>Reçu</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.txDate}>{formatDate(tx.date)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.rightCol}>
-                  <Text
-                    style={[
-                      styles.amountText,
-                      isIncome ? styles.incomeAmount : styles.expenseAmount,
-                    ]}
-                  >
-                    {isIncome ? '+' : '-'}
-                    {tx.amount.toFixed(2)} €
-                  </Text>
-
-                  {onDeleteTransaction && (
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        onDeleteTransaction(tx.id);
-                      }}
-                      style={styles.deleteBtn}
-                      activeOpacity={0.6}
+                <TouchableOpacity
+                  style={[
+                    styles.transactionCard,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.cardRadius,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => onTransactionPress && onTransactionPress(tx)}
+                >
+                  <View style={styles.leftCol}>
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        isIncome
+                          ? { backgroundColor: theme.colors.incomeBg }
+                          : { backgroundColor: theme.colors.surfaceSubtle },
+                      ]}
                     >
-                      <Ionicons name="close-circle" size={16} color={THEME.colors.textMuted} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableOpacity>
+                      <Ionicons
+                        name={getCategoryIcon(tx.category) as any}
+                        size={18}
+                        color={
+                          isIncome ? theme.colors.incomeText : theme.colors.textPrimary
+                        }
+                      />
+                    </View>
+
+                    <View style={styles.textContainer}>
+                      <View style={styles.titleLine}>
+                        <Text style={[styles.txTitle, { color: theme.colors.textPrimary }]}>{tx.title}</Text>
+                        {hasReceiptItems && (
+                          <View style={[styles.receiptTag, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                            <Ionicons name="receipt" size={10} color={theme.colors.textPrimary} />
+                            <Text style={[styles.receiptTagText, { color: theme.colors.textPrimary }]}>Reçu</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.txDate, { color: theme.colors.textSecondary }]}>{formatDate(tx.date)}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.rightCol}>
+                    <Text
+                      style={[
+                        styles.amountText,
+                        isIncome
+                          ? { color: theme.colors.incomeText }
+                          : { color: theme.colors.textPrimary },
+                      ]}
+                    >
+                      {isIncome ? '+' : '-'}
+                      {tx.amount.toFixed(2)} €
+                    </Text>
+
+                    {onDeleteTransaction && (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          onDeleteTransaction(tx.id);
+                        }}
+                        style={styles.deleteBtn}
+                        activeOpacity={0.6}
+                      >
+                        <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
             );
           })
         )}

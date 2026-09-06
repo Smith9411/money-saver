@@ -277,16 +277,19 @@ export function getUpcomingPayments(transactions: Transaction[]): {
   };
 }
 
-export function getCategoryBudgets(transactions: Transaction[]): CategoryBudget[] {
+export function getCategoryBudgets(
+  transactions: Transaction[],
+  customBudgets?: Record<string, number>
+): CategoryBudget[] {
   const budgets: Record<
     string,
     { name: string; budget: number; icon: string; color: string }
   > = {
-    food: { name: 'Alimentation & Sorties', budget: 400, icon: 'coffee', color: '#111111' },
-    housing: { name: 'Logement & Factures', budget: 900, icon: 'home', color: '#111111' },
-    transport: { name: 'Transports & Mobilité', budget: 150, icon: 'navigation', color: '#111111' },
-    shopping: { name: 'Shopping & Équipement', budget: 250, icon: 'shopping-bag', color: '#111111' },
-    leisure: { name: 'Loisirs & Abonnements', budget: 120, icon: 'play-circle', color: '#111111' },
+    food: { name: 'Alimentation & Sorties', budget: customBudgets?.food || 400, icon: 'coffee', color: '#111111' },
+    housing: { name: 'Logement & Factures', budget: customBudgets?.housing || 900, icon: 'home', color: '#111111' },
+    transport: { name: 'Transports & Mobilité', budget: customBudgets?.transport || 150, icon: 'navigation', color: '#111111' },
+    shopping: { name: 'Shopping & Équipement', budget: customBudgets?.shopping || 250, icon: 'shopping-bag', color: '#111111' },
+    leisure: { name: 'Loisirs & Abonnements', budget: customBudgets?.leisure || 120, icon: 'play-circle', color: '#111111' },
   };
 
   const spentPerCat: Record<string, number> = {};

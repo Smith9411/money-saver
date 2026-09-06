@@ -12,6 +12,7 @@ import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { getApiKey, setApiKey } from '../services/aiReceiptScanner';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 interface ProfileViewProps {
   onBack: () => void;
@@ -28,6 +29,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onSaveUserName,
   onResetAllData,
 }) => {
+  const { theme, themeId, changeTheme, availableThemes } = useTheme();
   const [nameInput, setNameInput] = useState(userName);
   const [isEditingName, setIsEditingName] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
@@ -119,6 +121,68 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <View style={styles.badgeLocal}>
           <Ionicons name="shield-checkmark-outline" size={14} color="#15803D" />
           <Text style={styles.badgeLocalText}>100% Hors-ligne & Privé</Text>
+        </View>
+      </View>
+
+      {/* Section Ambiance & Thèmes (5 identités visuelles) */}
+      <View style={[styles.sectionCard, { borderColor: theme.colors.border }]}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
+            <Ionicons name="color-palette-outline" size={18} color={theme.colors.textPrimary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Ambiance & Thèmes</Text>
+            <Text style={styles.sectionDesc}>5 identités visuelles épurées</Text>
+          </View>
+        </View>
+
+        <View style={styles.themesList}>
+          {availableThemes.map((t) => {
+            const isSelected = themeId === t.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={[
+                  styles.themeItem,
+                  isSelected && styles.themeItemActive,
+                  {
+                    borderColor: isSelected ? t.colors.accent : theme.colors.border,
+                    backgroundColor: isSelected ? theme.colors.surface : theme.colors.surfaceSubtle,
+                  },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => changeTheme(t.id)}
+              >
+                <View style={styles.themeInfo}>
+                  <View style={styles.themeNameRow}>
+                    <Text
+                      style={[
+                        styles.themeName,
+                        { color: isSelected ? t.colors.accent : theme.colors.textPrimary },
+                        isSelected && { fontWeight: '700' },
+                      ]}
+                    >
+                      {t.name}
+                    </Text>
+                    {isSelected && (
+                      <View style={[styles.activePill, { backgroundColor: t.colors.accent }]}>
+                        <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+                        <Text style={styles.activePillText}>Actif</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.themeTagline, { color: theme.colors.textSecondary }]}>{t.tagline}</Text>
+                </View>
+
+                {/* Nuancier 3 pastilles de couleur */}
+                <View style={styles.themeSwatches}>
+                  <View style={[styles.swatchDot, { backgroundColor: t.colors.background, borderColor: '#D1D5DB' }]} />
+                  <View style={[styles.swatchDot, { backgroundColor: t.colors.surfaceSubtle }]} />
+                  <View style={[styles.swatchDot, { backgroundColor: t.colors.accent }]} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
@@ -409,5 +473,64 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 6,
     textAlign: 'center',
+  },
+  themesList: {
+    gap: 10,
+    marginTop: 6,
+  },
+  themeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1.5,
+  },
+  themeItemActive: {
+    ...THEME.shadows.subtle,
+  },
+  themeInfo: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  themeNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  themeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.textPrimary,
+  },
+  activePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: THEME.radius.full,
+  },
+  activePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  themeTagline: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  themeSwatches: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  swatchDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
 });

@@ -31,17 +31,24 @@ import { BottomNavBar, NavTab } from '../components/BottomNavBar';
 import { AddTransactionModal } from '../components/AddTransactionModal';
 import { ReceiptScannerModal } from '../components/ReceiptScannerModal';
 import { ReceiptDetailModal } from '../components/ReceiptDetailModal';
+import { HistoryModal } from '../components/HistoryModal';
+import { BudgetManagerModal } from '../components/BudgetManagerModal';
 import { AnalyticsView } from '../components/AnalyticsView';
 import { ProfileView } from '../components/ProfileView';
 import { OnboardingView } from '../components/OnboardingView';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Index() {
+  const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [period, setPeriod] = useState<TimePeriod>('week');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [userName, setUserName] = useState<string | null>(null); // null = en chargement, '' = onboarding requis
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isBudgetManagerOpen, setIsBudgetManagerOpen] = useState(false);
+  const [customBudgets, setCustomBudgets] = useState<Record<string, number>>({});
   const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
 
   // Initialisation de la base SQLite et de la clé d'API
@@ -53,6 +60,20 @@ export default function Index() {
       setTransactions(loaded);
       const savedName = await getSetting('user_name', '');
       setUserName(savedName);
+
+      // Charger les plafonds personnalisés de budget
+      const foodB = await getSetting('budget_food', '400');
+      const housingB = await getSetting('budget_housing', '900');
+      const transportB = await getSetting('budget_transport', '150');
+      const shoppingB = await getSetting('budget_shopping', '250');
+      const leisureB = await getSetting('budget_leisure', '120');
+      setCustomBudgets({
+        food: parseInt(foodB, 10) || 400,
+        housing: parseInt(housingB, 10) || 900,
+        transport: parseInt(transportB, 10) || 150,
+        shopping: parseInt(shoppingB, 10) || 250,
+        leisure: parseInt(leisureB, 10) || 120,
+      });
     };
     loadData();
   }, []);
@@ -67,15 +88,21 @@ export default function Index() {
     return getUpcomingPayments(transactions);
   }, [transactions]);
 
-  // Calcul des budgets par catégorie
+  // Calcul des budgets par catégorie avec plafonds configurables
   const budgets = useMemo(() => {
-    return getCategoryBudgets(transactions);
-  }, [transactions]);
+    return getCategoryBudgets(transactions, customBudgets);
+  }, [transactions, customBudgets]);
 
   // Enregistrer le prénom depuis l'onboarding ou le profil
   const handleSaveUserName = async (name: string) => {
     setUserName(name);
     await setSetting('user_name', name);
+  };
+
+  // Mettre à jour le plafond d'un budget dans SQLite
+  const handleUpdateBudget = async (category: TransactionCategory, newBudget: number) => {
+    setCustomBudgets((prev) => ({ ...prev, [category]: newBudget }));
+    await setSetting(`budget_${category}`, newBudget.toString());
   };
 
   // Remise à zéro complète de l'application (bascule automatiquement sur l'onboarding)
@@ -131,13 +158,13 @@ export default function Index() {
 
   // 1. Pendant le chargement initial de la base
   if (userName === null) {
-    return <View style={{ flex: 1, backgroundColor: '#FAF9F6' }} />;
+    return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
   }
 
   // 2. Si aucun prénom n'est défini (premier lancement ou après réinitialisation) : Page d'onboarding !
   if (!userName || userName.trim().length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
         <OnboardingView onComplete={handleSaveUserName} />
       </SafeAreaView>
     );
@@ -145,8 +172,8 @@ export default function Index() {
 
   // 3. Application principale une fois l'utilisateur accueilli
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {currentTab === 'profile' ? (
           <ProfileView
             onBack={() => setCurrentTab('home')}
@@ -170,7 +197,7 @@ export default function Index() {
           >
             {/* 1. Header minimaliste */}
             <Header
-              onCalendarPress={() => setCurrentTab('analytics')}
+              onCalendarPress={() => setIsHistoryOpen(true)}
               onProfilePress={() => setCurrentTab('profile')}
               userName={userName}
             />
@@ -192,10 +219,10 @@ export default function Index() {
               onAddRecurringPress={() => setIsAddModalOpen(true)}
             />
 
-            {/* 5. Budgets & Catégories avec jauges fines noires */}
+            {/* 5. Budgets & Catégories avec jauges fines et modification de plafond */}
             <BudgetCategoryList
               budgets={budgets}
-              onViewAll={() => setCurrentTab('analytics')}
+              onViewAll={() => setIsBudgetManagerOpen(true)}
             />
 
             {/* 6. Dernières transactions avec clic pour ouvrir le ticket de caisse */}
@@ -203,7 +230,7 @@ export default function Index() {
               transactions={transactions}
               onDeleteTransaction={handleDeleteTransaction}
               onTransactionPress={(tx) => setSelectedTxForReceipt(tx)}
-              onViewAll={() => setCurrentTab('analytics')}
+              onViewAll={() => setIsHistoryOpen(true)}
             />
           </ScrollView>
         )}
@@ -242,6 +269,26 @@ export default function Index() {
           onClose={() => setSelectedTxForReceipt(null)}
           onDelete={handleDeleteTransaction}
         />
+
+        {/* Modale d'historique complet avec recherche temps réel & filtres */}
+        <HistoryModal
+          visible={isHistoryOpen}
+          onClose={() => setIsHistoryOpen(false)}
+          transactions={transactions}
+          onSelectTransaction={(tx) => {
+            setIsHistoryOpen(false);
+            setSelectedTxForReceipt(tx);
+          }}
+          onDeleteTransaction={handleDeleteTransaction}
+        />
+
+        {/* Modale de gestion des plafonds de budgets */}
+        <BudgetManagerModal
+          visible={isBudgetManagerOpen}
+          onClose={() => setIsBudgetManagerOpen(false)}
+          budgets={budgets}
+          onUpdateBudget={handleUpdateBudget}
+        />
       </View>
     </SafeAreaView>
   );
@@ -250,11 +297,9 @@ export default function Index() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
     position: 'relative',
   },
   scrollContent: {

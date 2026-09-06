@@ -7,10 +7,12 @@ import {
   Dimensions,
 } from 'react-native';
 import Svg, { Path, Line, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { THEME } from '../constants/theme';
 import { TimePeriod, Transaction } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 interface CashflowChartProps {
   period: TimePeriod;
@@ -156,27 +158,38 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
 
   const totalPeriod = currentData.reduce((sum, d) => sum + d.amount, 0);
 
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          borderRadius: theme.cardRadius,
+        },
+      ]}
+    >
       {/* En-tête de section avec sélecteur de période */}
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.sectionTitle}>Aperçu des dépenses</Text>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Aperçu des dépenses</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>
             Total sur la période :{' '}
-            <Text style={styles.totalBold}>{totalPeriod.toFixed(2)} €</Text>
+            <Text style={[styles.totalBold, { color: theme.colors.textPrimary }]}>{totalPeriod.toFixed(2)} €</Text>
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.periodPill}
+          style={[styles.periodPill, { backgroundColor: theme.colors.surfaceSubtle, borderColor: theme.colors.border }]}
           activeOpacity={0.7}
           onPress={cyclePeriod}
         >
-          <Text style={styles.periodPillText}>
+          <Text style={[styles.periodPillText, { color: theme.colors.textPrimary }]}>
             {period === 'week' ? 'Cette semaine' : 'Ce mois'}
           </Text>
-          <Ionicons name="chevron-down" size={13} color={THEME.colors.textPrimary} />
+          <Ionicons name="chevron-down" size={13} color={theme.colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -184,7 +197,10 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
       <View style={styles.chartContainer}>
         {/* Tooltip badge noir flottant indiquant le vrai montant */}
         {activePoint && (
-          <View
+          <Animated.View
+            key={`badge-${selectedIndex}`}
+            entering={FadeIn.duration(160)}
+            exiting={FadeOut.duration(100)}
             style={[
               styles.floatingBadge,
               {
@@ -193,19 +209,19 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
               },
             ]}
           >
-            <View style={styles.badgeContent}>
+            <View style={[styles.badgeContent, { backgroundColor: theme.colors.accent }]}>
               <Ionicons name="arrow-up" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
               <Text style={styles.badgeText}>{activePoint.amount.toFixed(2)} €</Text>
             </View>
-            <View style={styles.badgeArrow} />
-          </View>
+            <View style={[styles.badgeArrow, { borderTopColor: theme.colors.accent }]} />
+          </Animated.View>
         )}
 
         <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
           <Defs>
             <LinearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#111111" stopOpacity="0.05" />
-              <Stop offset="100%" stopColor="#111111" stopOpacity="0.0" />
+              <Stop offset="0%" stopColor={theme.colors.accent} stopOpacity="0.06" />
+              <Stop offset="100%" stopColor={theme.colors.accent} stopOpacity="0.0" />
             </LinearGradient>
           </Defs>
 
@@ -227,11 +243,11 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
           {/* Surface sous la courbe */}
           <Path d={areaPath} fill="url(#chartGradient)" />
 
-          {/* Courbe continue noire */}
+          {/* Courbe continue */}
           <Path
             d={linePath}
             fill="none"
-            stroke="#111111"
+            stroke={theme.colors.accent}
             strokeWidth={2.4}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -245,10 +261,10 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
                 cy={activePoint.y}
                 r={6}
                 fill="#FFFFFF"
-                stroke="#111111"
+                stroke={theme.colors.accent}
                 strokeWidth={2.4}
               />
-              <Circle cx={activePoint.x} cy={activePoint.y} r={2.5} fill="#111111" />
+              <Circle cx={activePoint.x} cy={activePoint.y} r={2.5} fill={theme.colors.accent} />
             </>
           )}
         </Svg>

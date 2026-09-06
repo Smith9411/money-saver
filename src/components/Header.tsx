@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   onCalendarPress?: () => void;
@@ -12,14 +13,31 @@ interface HeaderProps {
   userName?: string;
 }
 
+const getTodayDateString = () => {
+  try {
+    const d = new Date();
+    const formatted = d.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+    });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  } catch {
+    return 'Aujourd’hui';
+  }
+};
+
 export const Header: React.FC<HeaderProps> = ({
   onCalendarPress,
   onSearchPress,
   onOptionsPress,
   onProfilePress,
-  dateText = 'Dim. 6 Septembre',
+  dateText,
   userName = '',
 }) => {
+  const { theme } = useTheme();
+  const displayDate = dateText || getTodayDateString();
+
   return (
     <View style={styles.container}>
       {/* Profil avatar & salutation */}
@@ -29,9 +47,9 @@ export const Header: React.FC<HeaderProps> = ({
           activeOpacity={0.8}
           onPress={onProfilePress}
         >
-          <View style={styles.avatarContainer}>
+          <View style={[styles.avatarContainer, { borderColor: theme.colors.surface, backgroundColor: theme.colors.accent }]}>
             {/* Silhouette / Avatar ultra élégant */}
-            <View style={styles.avatarInner}>
+            <View style={[styles.avatarInner, { backgroundColor: theme.colors.accent }]}>
               <Ionicons name="person" size={20} color="#FFFFFF" />
             </View>
           </View>
@@ -40,19 +58,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Bouton calendrier / analyses épuré */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.calendarActionBtn}
+            style={[styles.calendarActionBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
             activeOpacity={0.7}
             onPress={onCalendarPress}
           >
-            <Ionicons name="calendar-outline" size={18} color={THEME.colors.textPrimary} />
+            <Ionicons name="calendar-outline" size={18} color={theme.colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Titre & Date */}
       <View style={styles.greetingContainer}>
-        <Text style={styles.dateLabel}>{dateText}</Text>
-        <Text style={styles.greetingTitle}>
+        <Text style={[styles.dateLabel, { color: theme.colors.textSecondary }]}>{displayDate}</Text>
+        <Text style={[styles.greetingTitle, { color: theme.colors.textPrimary }]}>
           {userName && userName.trim().length > 0
             ? `Bonjour, ${userName.trim()}`
             : 'Bonjour,'}

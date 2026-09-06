@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { THEME } from '../constants/theme';
 import { CategoryBudget } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 interface BudgetCategoryListProps {
   budgets: CategoryBudget[];
@@ -13,6 +14,7 @@ export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
   budgets,
   onViewAll,
 }) => {
+  const { theme } = useTheme();
   const getCategoryIcon = (iconName: string) => {
     switch (iconName) {
       case 'coffee':
@@ -34,45 +36,61 @@ export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
     <View style={styles.container}>
       {/* En-tête avec 'Tout voir' */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Budgets & Catégories</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Budgets & Catégories</Text>
         <TouchableOpacity activeOpacity={0.6} onPress={onViewAll}>
-          <Text style={styles.viewAllText}>Tout voir</Text>
+          <Text style={[styles.viewAllText, { color: theme.colors.accent }]}>Tout voir</Text>
         </TouchableOpacity>
       </View>
 
       {/* Liste des items de budget */}
       <View style={styles.listContainer}>
-        {budgets.slice(0, 3).map((item, index) => {
+        {budgets.slice(0, 3).map((item) => {
           const isWarning = item.percentage > 85;
 
           return (
-            <View key={item.category} style={styles.budgetItem}>
+            <TouchableOpacity
+              key={item.category}
+              style={[
+                styles.budgetItem,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.cardRadius,
+                },
+              ]}
+              activeOpacity={0.8}
+              onPress={onViewAll}
+            >
               <View style={styles.topRow}>
                 {/* Icône dans un cercle doux */}
-                <View style={styles.iconWrapper}>
+                <View style={[styles.iconWrapper, { backgroundColor: theme.colors.surfaceSubtle }]}>
                   <Ionicons
                     name={getCategoryIcon(item.iconName) as any}
                     size={18}
-                    color={THEME.colors.textPrimary}
+                    color={theme.colors.textPrimary}
                   />
                 </View>
 
                 {/* Titre & sous-titre */}
                 <View style={styles.infoCol}>
                   <View style={styles.titleRow}>
-                    <Text style={styles.itemTitle}>{item.name}</Text>
+                    <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{item.name}</Text>
                     <View style={styles.rightStats}>
-                      <TouchableOpacity activeOpacity={0.6} style={styles.optionsBtn}>
+                      <TouchableOpacity
+                        activeOpacity={0.6}
+                        style={styles.optionsBtn}
+                        onPress={onViewAll}
+                      >
                         <Ionicons
-                          name="ellipsis-vertical"
+                          name="pencil-outline"
                           size={14}
-                          color={THEME.colors.textSecondary}
+                          color={theme.colors.textSecondary}
                         />
                       </TouchableOpacity>
                       <Text
                         style={[
                           styles.percentageText,
-                          isWarning && styles.percentageWarning,
+                          { color: isWarning ? theme.colors.expenseText : theme.colors.textPrimary },
                         ]}
                       >
                         {item.percentage}%
@@ -80,27 +98,27 @@ export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
                     </View>
                   </View>
 
-                  <Text style={styles.itemSubtitle}>
+                  <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]}>
                     {item.spent} € dépensés sur {item.budget} €
                   </Text>
 
-                  {/* Barre de progression fine noire (exactement comme le design de référence) */}
-                  <View style={styles.progressBarBackground}>
+                  {/* Barre de progression fine */}
+                  <View style={[styles.progressBarBackground, { backgroundColor: theme.colors.surfaceMuted }]}>
                     <View
                       style={[
                         styles.progressBarFill,
                         {
                           width: `${Math.min(item.percentage, 100)}%`,
                           backgroundColor: isWarning
-                            ? THEME.colors.expenseText
-                            : THEME.colors.textPrimary,
+                            ? theme.colors.expenseText
+                            : theme.colors.accent,
                         },
                       ]}
                     />
                   </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
