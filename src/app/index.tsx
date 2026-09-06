@@ -3,9 +3,9 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../constants/theme';
 import { Transaction, TimePeriod, TransactionCategory, TransactionType } from '../types';
 import {
