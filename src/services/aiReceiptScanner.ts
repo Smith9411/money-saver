@@ -43,12 +43,12 @@ Réponds UNIQUEMENT par le JSON pur sans markdown.`;
   // Nettoyage au cas où un préfixe data:image/... est présent
   const cleanBase64 = base64Image.replace(/^data:image\/[a-z]+;base64,/, '').trim();
 
-  // Modèles testés dans l'ordre pour éviter toute erreur 404
+  // Modèles valides dans l'ordre de priorité (gemini-3.6-flash est le modèle actif)
   const candidateModels = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-2.0-flash-exp',
-    'gemini-2.5-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.7-flash',
+    'gemini-3.8-flash',
   ];
 
   let lastError: any = null;
