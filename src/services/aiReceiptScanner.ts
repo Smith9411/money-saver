@@ -40,41 +40,67 @@ Les catégories possibles pour chaque article sont :
 Assure-toi que chaque prix est un nombre flottant (pas de texte).
 Réponds UNIQUEMENT par le JSON pur sans markdown.`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  // Nettoyage au cas où un préfixe data:image/... est présent
+  const cleanBase64 = base64Image.replace(/^data:image\/[a-z]+;base64,/, '').trim();
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: prompt },
+  // Modèles testés dans l'ordre pour éviter toute erreur 404
+  const candidateModels = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-2.0-flash-exp',
+    'gemini-2.5-flash',
+  ];
+
+  let lastError: any = null;
+  let responseData: any = null;
+
+  for (const model of candidateModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
             {
-              inline_data: {
-                mime_type: 'image/jpeg',
-                data: base64Image,
-              },
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: 'image/jpeg',
+                    data: cleanBase64,
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+          generationConfig: {
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.warn('Gemini API Error:', response.status, errorText);
-    throw new Error(`Erreur API (${response.status}) : Vérifiez votre clé d'API.`);
+      if (res.ok) {
+        responseData = await res.json();
+        break; // Succès !
+      } else {
+        const errorText = await res.text();
+        console.warn(`Gemini model ${model} failed (${res.status}):`, errorText);
+        lastError = new Error(`Erreur API (${res.status}) sur ${model}`);
+      }
+    } catch (err) {
+      console.warn(`Network error with model ${model}:`, err);
+      lastError = err;
+    }
   }
 
-  const data = await response.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!responseData) {
+    throw lastError || new Error('Impossible de joindre les serveurs IA de Google.');
+  }
+
+  const rawText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!rawText) {
     throw new Error('Aucun texte extrait par l’IA.');
