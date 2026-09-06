@@ -7,12 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 interface TransactionListProps {
   transactions: Transaction[];
   onDeleteTransaction?: (id: string) => void;
+  onTransactionPress?: (tx: Transaction) => void;
   onViewAll?: () => void;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   onDeleteTransaction,
+  onTransactionPress,
   onViewAll,
 }) => {
   const getCategoryIcon = (category: string) => {
@@ -59,11 +61,17 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <Text style={styles.emptyText}>Aucune transaction enregistrée</Text>
           </View>
         ) : (
-          transactions.slice(0, 5).map((tx) => {
+          transactions.slice(0, 7).map((tx) => {
             const isIncome = tx.type === 'income';
+            const hasReceiptItems = tx.items && tx.items.length > 0;
 
             return (
-              <View key={tx.id} style={styles.transactionCard}>
+              <TouchableOpacity
+                key={tx.id}
+                style={styles.transactionCard}
+                activeOpacity={0.7}
+                onPress={() => onTransactionPress && onTransactionPress(tx)}
+              >
                 <View style={styles.leftCol}>
                   <View
                     style={[
@@ -81,7 +89,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   </View>
 
                   <View style={styles.textContainer}>
-                    <Text style={styles.txTitle}>{tx.title}</Text>
+                    <View style={styles.titleLine}>
+                      <Text style={styles.txTitle}>{tx.title}</Text>
+                      {hasReceiptItems && (
+                        <View style={styles.receiptTag}>
+                          <Ionicons name="receipt" size={10} color="#111111" />
+                          <Text style={styles.receiptTagText}>Reçu</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.txDate}>{formatDate(tx.date)}</Text>
                   </View>
                 </View>
@@ -99,7 +115,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                   {onDeleteTransaction && (
                     <TouchableOpacity
-                      onPress={() => onDeleteTransaction(tx.id)}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        onDeleteTransaction(tx.id);
+                      }}
                       style={styles.deleteBtn}
                       activeOpacity={0.6}
                     >
@@ -107,7 +126,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
@@ -176,11 +195,31 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
   },
+  titleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   txTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.textPrimary,
     letterSpacing: -0.2,
+  },
+  receiptTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F4F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  receiptTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    textTransform: 'uppercase',
   },
   txDate: {
     fontSize: 12,

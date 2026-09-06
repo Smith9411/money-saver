@@ -1,9 +1,16 @@
 import * as SQLite from 'expo-sqlite';
-import { Transaction, PeriodStats, ChartDataPoint, CategoryBudget, TimePeriod } from '../types';
+import {
+  Transaction,
+  PeriodStats,
+  CategoryBudget,
+  TimePeriod,
+  UpcomingPayment,
+  ReceiptItem,
+} from '../types';
 
 let dbInstance: any = null;
 
-// Mémoire de secours en cas d'environnement web ou initialisation différée
+// Données initiales enrichies avec des paiements récurrents et des articles de tickets
 let fallbackTransactions: Transaction[] = [
   {
     id: '1',
@@ -13,6 +20,14 @@ let fallbackTransactions: Transaction[] = [
     category: 'food',
     date: '2026-09-06',
     merchant: 'Monoprix',
+    note: '5 article(s) scanné(s)',
+    items: [
+      { id: 'it-1', name: 'Pain de campagne bio', price: 2.80, selected: true, category: 'food' },
+      { id: 'it-2', name: 'Café grains Arabica 250g', price: 5.40, selected: true, category: 'food' },
+      { id: 'it-3', name: 'Huile d’olive vierge extra', price: 8.90, selected: true, category: 'food' },
+      { id: 'it-4', name: 'Chaussettes coton x3', price: 12.00, selected: true, category: 'shopping' },
+      { id: 'it-5', name: 'Jus d’orange frais', price: 3.50, selected: true, category: 'food' },
+    ],
   },
   {
     id: '2',
@@ -22,6 +37,8 @@ let fallbackTransactions: Transaction[] = [
     category: 'leisure',
     date: '2026-09-05',
     merchant: 'Spotify',
+    isRecurring: true,
+    recurringDay: 12,
   },
   {
     id: '3',
@@ -31,42 +48,52 @@ let fallbackTransactions: Transaction[] = [
     category: 'salary',
     date: '2026-09-01',
     merchant: 'Entreprise SA',
+    isRecurring: true,
+    recurringDay: 28,
   },
   {
     id: '4',
-    title: 'Restaurant Le Comptoir',
-    amount: 46.50,
+    title: 'Loyer Appartement',
+    amount: 780.00,
     type: 'expense',
-    category: 'food',
-    date: '2026-09-04',
-    merchant: 'Le Comptoir',
+    category: 'housing',
+    date: '2026-09-01',
+    merchant: 'Propriétaire',
+    isRecurring: true,
+    recurringDay: 5,
   },
   {
     id: '5',
-    title: 'Pass Transport Mensuel',
+    title: 'Forfait Mobile 5G',
+    amount: 19.99,
+    type: 'expense',
+    category: 'leisure',
+    date: '2026-09-02',
+    merchant: 'Opérateur',
+    isRecurring: true,
+    recurringDay: 18,
+  },
+  {
+    id: '6',
+    title: 'Pass Navigo Transport',
     amount: 86.40,
     type: 'expense',
     category: 'transport',
     date: '2026-09-02',
     merchant: 'Régie Transports',
-  },
-  {
-    id: '6',
-    title: 'Maison & Décoration',
-    amount: 124.00,
-    type: 'expense',
-    category: 'shopping',
-    date: '2026-09-03',
-    merchant: 'Galeries',
+    isRecurring: true,
+    recurringDay: 2,
   },
   {
     id: '7',
-    title: 'Mission Freelance UI',
-    amount: 600.00,
-    type: 'income',
-    category: 'freelance',
-    date: '2026-09-04',
-    merchant: 'Studio Tech',
+    title: 'Abonnement Box Internet',
+    amount: 29.99,
+    type: 'expense',
+    category: 'housing',
+    date: '2026-09-03',
+    merchant: 'Fournisseur Internet',
+    isRecurring: true,
+    recurringDay: 22,
   },
 ];
 
@@ -83,11 +110,25 @@ export async function initDatabase(): Promise<void> {
           category TEXT NOT NULL,
           date TEXT NOT NULL,
           merchant TEXT,
-          note TEXT
+          note TEXT,
+          items TEXT,
+          is_recurring INTEGER DEFAULT 0,
+          recurring_day INTEGER
         );
       `);
 
-      // Vérifier si la table est vide pour initialiser les données d'exemple
+      // Migration non-bloquante au cas où la table existait déjà avec l'ancien schéma
+      try {
+        dbInstance.execSync(`ALTER TABLE transactions ADD COLUMN items TEXT;`);
+      } catch {}
+      try {
+        dbInstance.execSync(`ALTER TABLE transactions ADD COLUMN is_recurring INTEGER DEFAULT 0;`);
+      } catch {}
+      try {
+        dbInstance.execSync(`ALTER TABLE transactions ADD COLUMN recurring_day INTEGER;`);
+      } catch {}
+
+      // Vérifier si la table est vide pour initialiser les données de démonstration
       const countResult: any = dbInstance.getFirstSync(
         'SELECT COUNT(*) as count FROM transactions;'
       );
@@ -95,8 +136,8 @@ export async function initDatabase(): Promise<void> {
       if (countResult && countResult.count === 0) {
         for (const item of fallbackTransactions) {
           dbInstance.runSync(
-            `INSERT INTO transactions (id, title, amount, type, category, date, merchant, note)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+            `INSERT INTO transactions (id, title, amount, type, category, date, merchant, note, items, is_recurring, recurring_day)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
             [
               item.id,
               item.title,
@@ -106,6 +147,9 @@ export async function initDatabase(): Promise<void> {
               item.date,
               item.merchant || '',
               item.note || '',
+              item.items ? JSON.stringify(item.items) : null,
+              item.isRecurring ? 1 : 0,
+              item.recurringDay || null,
             ]
           );
         }
@@ -119,10 +163,22 @@ export async function initDatabase(): Promise<void> {
 export async function getTransactions(): Promise<Transaction[]> {
   try {
     if (dbInstance) {
-      const rows = dbInstance.getAllSync(
+      const rows: any[] = dbInstance.getAllSync(
         'SELECT * FROM transactions ORDER BY date DESC, id DESC;'
       );
-      return rows as Transaction[];
+      return rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        amount: row.amount,
+        type: row.type,
+        category: row.category,
+        date: row.date,
+        merchant: row.merchant,
+        note: row.note,
+        items: row.items ? JSON.parse(row.items) : undefined,
+        isRecurring: Boolean(row.is_recurring),
+        recurringDay: row.recurring_day || undefined,
+      }));
     }
   } catch (e) {
     console.warn('Error reading from SQLite, using memory fallback:', e);
@@ -143,8 +199,8 @@ export async function addTransaction(
   try {
     if (dbInstance) {
       dbInstance.runSync(
-        `INSERT INTO transactions (id, title, amount, type, category, date, merchant, note)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO transactions (id, title, amount, type, category, date, merchant, note, items, is_recurring, recurring_day)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           newTx.id,
           newTx.title,
@@ -154,6 +210,9 @@ export async function addTransaction(
           newTx.date,
           newTx.merchant || '',
           newTx.note || '',
+          newTx.items ? JSON.stringify(newTx.items) : null,
+          newTx.isRecurring ? 1 : 0,
+          newTx.recurringDay || null,
         ]
       );
     }
@@ -178,8 +237,7 @@ export async function deleteTransaction(id: string): Promise<void> {
 
 export function computeStats(transactions: Transaction[], period: TimePeriod): PeriodStats {
   const now = new Date();
-  
-  // Filtrer par période
+
   const filtered = transactions.filter((tx) => {
     const txDate = new Date(tx.date);
     if (isNaN(txDate.getTime())) return true;
@@ -216,6 +274,53 @@ export function computeStats(transactions: Transaction[], period: TimePeriod): P
     savingsRate,
     netBalance,
     transactionsCount: filtered.length,
+  };
+}
+
+// Calcul des prochaines échéances récurrentes du mois en cours
+export function getUpcomingPayments(transactions: Transaction[]): {
+  upcoming: UpcomingPayment[];
+  totalUpcomingExpenses: number;
+} {
+  const now = new Date();
+  const currentDay = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const recurringTx = transactions.filter((tx) => tx.isRecurring);
+
+  const upcoming: UpcomingPayment[] = [];
+  let totalUpcomingExpenses = 0;
+
+  for (const tx of recurringTx) {
+    const day = tx.recurringDay || 1;
+    let daysRemaining = day - currentDay;
+
+    // Si le jour de prélèvement est déjà passé ce mois-ci, calcule le prochain prélèvement pour le mois suivant
+    if (daysRemaining < 0) {
+      daysRemaining = daysInMonth - currentDay + day;
+    }
+
+    if (tx.type === 'expense') {
+      totalUpcomingExpenses += tx.amount;
+    }
+
+    upcoming.push({
+      id: tx.id,
+      title: tx.title,
+      amount: tx.amount,
+      type: tx.type,
+      dayOfMonth: day,
+      daysRemaining,
+      category: tx.category,
+    });
+  }
+
+  // Trier par échéance la plus proche (0 jour, 1 jour, 2 jours...)
+  upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+  return {
+    upcoming,
+    totalUpcomingExpenses,
   };
 }
 

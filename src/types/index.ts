@@ -20,6 +20,19 @@ export interface Transaction {
   date: string; // ISO format or YYYY-MM-DD
   merchant?: string;
   note?: string;
+  items?: ReceiptItem[]; // Détail des articles du ticket de caisse
+  isRecurring?: boolean; // Paiement récurrent mensuel
+  recurringDay?: number; // Jour du mois (1-31)
+}
+
+export interface UpcomingPayment {
+  id: string;
+  title: string;
+  amount: number;
+  type: TransactionType;
+  dayOfMonth: number;
+  daysRemaining: number;
+  category: TransactionCategory;
 }
 
 export type TimePeriod = 'week' | 'month' | 'year';

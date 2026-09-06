@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../constants/theme';
@@ -15,16 +14,19 @@ import {
   deleteTransaction,
   computeStats,
   getCategoryBudgets,
+  getUpcomingPayments,
 } from '../services/db';
 
 import { Header } from '../components/Header';
 import { MetricsPill } from '../components/MetricsPill';
 import { CashflowChart } from '../components/CashflowChart';
+import { UpcomingPaymentsSection } from '../components/UpcomingPaymentsSection';
 import { BudgetCategoryList } from '../components/BudgetCategoryList';
 import { TransactionList } from '../components/TransactionList';
 import { BottomNavBar, NavTab } from '../components/BottomNavBar';
 import { AddTransactionModal } from '../components/AddTransactionModal';
 import { ReceiptScannerModal } from '../components/ReceiptScannerModal';
+import { ReceiptDetailModal } from '../components/ReceiptDetailModal';
 import { AnalyticsView } from '../components/AnalyticsView';
 import { ProfileView } from '../components/ProfileView';
 
@@ -34,6 +36,7 @@ export default function Index() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
 
   // Initialisation de la base SQLite locale
   useEffect(() => {
@@ -50,18 +53,25 @@ export default function Index() {
     return computeStats(transactions, period);
   }, [transactions, period]);
 
+  // Calcul des échéances récurrentes à venir du mois
+  const upcomingData = useMemo(() => {
+    return getUpcomingPayments(transactions);
+  }, [transactions]);
+
   // Calcul des budgets par catégorie
   const budgets = useMemo(() => {
     return getCategoryBudgets(transactions);
   }, [transactions]);
 
-  // Ajouter une transaction manuelle
+  // Ajouter une transaction manuelle (avec support récurrent)
   const handleAddTransaction = async (data: {
     title: string;
     amount: number;
     type: TransactionType;
     category: TransactionCategory;
     date: string;
+    isRecurring?: boolean;
+    recurringDay?: number;
   }) => {
     const created = await addTransaction(data);
     setTransactions((prev) => [created, ...prev]);
@@ -73,7 +83,7 @@ export default function Index() {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Traiter et sauvegarder un ticket scanné avec ses articles retenus
+  // Traiter et sauvegarder un ticket scanné avec ses articles détaillés retenus
   const handleSaveReceipt = async (data: {
     merchant: string;
     totalAmount: number;
@@ -89,6 +99,7 @@ export default function Index() {
       date: data.date,
       merchant: data.merchant,
       note: `${data.items.length} article(s) scanné(s)`,
+      items: data.items,
     });
     setTransactions((prev) => [created, ...prev]);
   };
@@ -130,16 +141,24 @@ export default function Index() {
               onPeriodChange={setPeriod}
             />
 
-            {/* 4. Budgets & Catégories avec jauges fines noires */}
+            {/* 4. Échéances récurrentes à venir du mois (Nouveau !) */}
+            <UpcomingPaymentsSection
+              upcoming={upcomingData.upcoming}
+              totalUpcomingExpenses={upcomingData.totalUpcomingExpenses}
+              onAddRecurringPress={() => setIsAddModalOpen(true)}
+            />
+
+            {/* 5. Budgets & Catégories avec jauges fines noires */}
             <BudgetCategoryList
               budgets={budgets}
               onViewAll={() => setCurrentTab('analytics')}
             />
 
-            {/* 5. Dernières transactions */}
+            {/* 6. Dernières transactions avec clic pour ouvrir le ticket de caisse */}
             <TransactionList
               transactions={transactions}
               onDeleteTransaction={handleDeleteTransaction}
+              onTransactionPress={(tx) => setSelectedTxForReceipt(tx)}
               onViewAll={() => setCurrentTab('analytics')}
             />
           </ScrollView>
@@ -165,11 +184,19 @@ export default function Index() {
           onAdd={handleAddTransaction}
         />
 
-        {/* Modale de simulation et d'analyse de ticket de caisse */}
+        {/* Modale d'analyse et scan de ticket de caisse par IA */}
         <ReceiptScannerModal
           visible={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
           onSaveReceipt={handleSaveReceipt}
+        />
+
+        {/* Modale détaillée d'un ticket scanné au clic sur la dépense */}
+        <ReceiptDetailModal
+          transaction={selectedTxForReceipt}
+          visible={selectedTxForReceipt !== null}
+          onClose={() => setSelectedTxForReceipt(null)}
+          onDelete={handleDeleteTransaction}
         />
       </View>
     </SafeAreaView>

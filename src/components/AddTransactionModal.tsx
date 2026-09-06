@@ -23,6 +23,8 @@ interface AddTransactionModalProps {
     type: TransactionType;
     category: TransactionCategory;
     date: string;
+    isRecurring?: boolean;
+    recurringDay?: number;
   }) => void;
 }
 
@@ -46,6 +48,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [amountStr, setAmountStr] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [category, setCategory] = useState<TransactionCategory>('food');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringDay, setRecurringDay] = useState(new Date().getDate());
 
   const handleSubmit = () => {
     const parsedAmount = parseFloat(amountStr.replace(',', '.'));
@@ -60,6 +64,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       type,
       category,
       date: new Date().toISOString().split('T')[0],
+      isRecurring,
+      recurringDay: isRecurring ? recurringDay : undefined,
     });
 
     // Réinitialisation
@@ -67,6 +73,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     setTitle('');
     setType('expense');
     setCategory('food');
+    setIsRecurring(false);
     onClose();
   };
 
@@ -200,6 +207,56 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   );
                 })}
               </View>
+            </View>
+
+            {/* Option Récurrence mensuelle */}
+            <View style={styles.recurringBox}>
+              <TouchableOpacity
+                style={styles.recurringRow}
+                activeOpacity={0.7}
+                onPress={() => setIsRecurring(!isRecurring)}
+              >
+                <View style={styles.recurringInfo}>
+                  <Text style={styles.recurringTitle}>Paiement récurrent mensuel</Text>
+                  <Text style={styles.recurringSub}>
+                    Loyer, abonnements, salaire prélevé chaque mois
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.recurringSwitch,
+                    isRecurring && styles.recurringSwitchActive,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.recurringThumb,
+                      isRecurring && styles.recurringThumbActive,
+                    ]}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {isRecurring && (
+                <View style={styles.daySelectorRow}>
+                  <Text style={styles.dayLabel}>Jour du prélèvement dans le mois :</Text>
+                  <View style={styles.dayControl}>
+                    <TouchableOpacity
+                      style={styles.dayBtn}
+                      onPress={() => setRecurringDay(Math.max(1, recurringDay - 1))}
+                    >
+                      <Ionicons name="remove" size={16} color={THEME.colors.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={styles.dayValueText}>Le {recurringDay}</Text>
+                    <TouchableOpacity
+                      style={styles.dayBtn}
+                      onPress={() => setRecurringDay(Math.min(31, recurringDay + 1))}
+                    >
+                      <Ionicons name="add" size={16} color={THEME.colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Bouton de confirmation */}
@@ -372,5 +429,93 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  /* STYLES RÉCURRENCE */
+  recurringBox: {
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderRadius: THEME.radius.md,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  recurringRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recurringInfo: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  recurringTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  recurringSub: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  recurringSwitch: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#D4D4D8',
+    padding: 2,
+    justifyContent: 'center',
+  },
+  recurringSwitchActive: {
+    backgroundColor: '#111111',
+  },
+  recurringThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+  },
+  recurringThumbActive: {
+    transform: [{ translateX: 18 }],
+  },
+  daySelectorRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dayLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.colors.textSecondary,
+  },
+  dayControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: THEME.radius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  dayBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayValueText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    minWidth: 46,
+    textAlign: 'center',
   },
 });
