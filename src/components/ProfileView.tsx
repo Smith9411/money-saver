@@ -34,6 +34,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
   const [isSaved, setIsSaved] = useState(false);
+  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [themeFilter, setThemeFilter] = useState<'all' | 'light' | 'dark'>('all');
+
+  const filteredThemes = availableThemes.filter((t) => {
+    if (themeFilter === 'light') return !t.isDark;
+    if (themeFilter === 'dark') return t.isDark;
+    return true;
+  });
 
   const handleSaveName = () => {
     triggerHaptic('success');
@@ -124,66 +132,209 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </View>
       </View>
 
-      {/* Section Ambiance & Thèmes (5 identités visuelles) */}
-      <View style={[styles.sectionCard, { borderColor: theme.colors.border }]}>
+      {/* Section Ambiance & Thèmes (Menu déroulant personnalisable) */}
+      <View style={[styles.sectionCard, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
             <Ionicons name="color-palette-outline" size={18} color={theme.colors.textPrimary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Ambiance & Thèmes</Text>
-            <Text style={styles.sectionDesc}>5 identités visuelles épurées</Text>
+            <Text style={[styles.sectionDesc, { color: theme.colors.textSecondary }]}>
+              {availableThemes.length} styles • 5 Clairs & 4 Sombres
+            </Text>
           </View>
         </View>
 
-        <View style={styles.themesList}>
-          {availableThemes.map((t) => {
-            const isSelected = themeId === t.id;
-            return (
-              <TouchableOpacity
-                key={t.id}
+        {/* Bouton sélecteur déroulant affichant le thème actuel */}
+        <TouchableOpacity
+          style={[
+            styles.dropdownHeader,
+            {
+              backgroundColor: theme.colors.surfaceSubtle,
+              borderColor: isThemeDropdownOpen ? theme.colors.accent : theme.colors.border,
+            },
+          ]}
+          activeOpacity={0.7}
+          onPress={() => {
+            triggerHaptic('light');
+            setIsThemeDropdownOpen(!isThemeDropdownOpen);
+          }}
+        >
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <View style={styles.dropdownTitleRow}>
+              <Text style={[styles.dropdownThemeName, { color: theme.colors.textPrimary }]}>
+                {theme.name}
+              </Text>
+              <View
                 style={[
-                  styles.themeItem,
-                  isSelected && styles.themeItemActive,
-                  {
-                    borderColor: isSelected ? t.colors.accent : theme.colors.border,
-                    backgroundColor: isSelected ? theme.colors.surface : theme.colors.surfaceSubtle,
-                  },
+                  styles.themeTypeBadge,
+                  { backgroundColor: theme.isDark ? '#262633' : '#E8E8EE' },
                 ]}
-                activeOpacity={0.7}
-                onPress={() => changeTheme(t.id)}
               >
-                <View style={styles.themeInfo}>
-                  <View style={styles.themeNameRow}>
-                    <Text
-                      style={[
-                        styles.themeName,
-                        { color: isSelected ? t.colors.accent : theme.colors.textPrimary },
-                        isSelected && { fontWeight: '700' },
-                      ]}
-                    >
-                      {t.name}
-                    </Text>
-                    {isSelected && (
-                      <View style={[styles.activePill, { backgroundColor: t.colors.accent }]}>
-                        <Ionicons name="checkmark" size={11} color="#FFFFFF" />
-                        <Text style={styles.activePillText}>Actif</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[styles.themeTagline, { color: theme.colors.textSecondary }]}>{t.tagline}</Text>
-                </View>
+                <Ionicons
+                  name={theme.isDark ? 'moon' : 'sunny'}
+                  size={10}
+                  color={theme.isDark ? '#E5B869' : '#111111'}
+                />
+                <Text style={[styles.themeTypeBadgeText, { color: theme.colors.textPrimary }]}>
+                  {theme.isDark ? 'Sombre' : 'Clair'}
+                </Text>
+              </View>
+            </View>
+            <Text
+              style={[styles.dropdownThemeTagline, { color: theme.colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {theme.tagline}
+            </Text>
+          </View>
 
-                {/* Nuancier 3 pastilles de couleur */}
-                <View style={styles.themeSwatches}>
-                  <View style={[styles.swatchDot, { backgroundColor: t.colors.background, borderColor: '#D1D5DB' }]} />
-                  <View style={[styles.swatchDot, { backgroundColor: t.colors.surfaceSubtle }]} />
-                  <View style={[styles.swatchDot, { backgroundColor: t.colors.accent }]} />
-                </View>
+          {/* Nuancier du thème actif + flèche déroulante */}
+          <View style={styles.dropdownRight}>
+            <View style={styles.themeSwatches}>
+              <View style={[styles.swatchDot, { backgroundColor: theme.colors.background }]} />
+              <View style={[styles.swatchDot, { backgroundColor: theme.colors.surfaceSubtle }]} />
+              <View style={[styles.swatchDot, { backgroundColor: theme.colors.accent }]} />
+            </View>
+            <Ionicons
+              name={isThemeDropdownOpen ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={theme.colors.textPrimary}
+              style={{ marginLeft: 6 }}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {/* Menu déroulant dépliable */}
+        {isThemeDropdownOpen && (
+          <View style={styles.dropdownContent}>
+            {/* Onglets de filtrage */}
+            <View style={styles.filterTabsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  themeFilter === 'all' && [styles.filterTabActive, { backgroundColor: theme.colors.accent }],
+                ]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  setThemeFilter('all');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    { color: themeFilter === 'all' ? '#FFFFFF' : theme.colors.textSecondary },
+                  ]}
+                >
+                  Tous ({availableThemes.length})
+                </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  themeFilter === 'light' && [styles.filterTabActive, { backgroundColor: theme.colors.accent }],
+                ]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  setThemeFilter('light');
+                }}
+              >
+                <Ionicons
+                  name="sunny-outline"
+                  size={12}
+                  color={themeFilter === 'light' ? '#FFFFFF' : theme.colors.textSecondary}
+                  style={{ marginRight: 3 }}
+                />
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    { color: themeFilter === 'light' ? '#FFFFFF' : theme.colors.textSecondary },
+                  ]}
+                >
+                  Clairs (5)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  themeFilter === 'dark' && [styles.filterTabActive, { backgroundColor: theme.colors.accent }],
+                ]}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  setThemeFilter('dark');
+                }}
+              >
+                <Ionicons
+                  name="moon-outline"
+                  size={12}
+                  color={themeFilter === 'dark' ? '#FFFFFF' : theme.colors.textSecondary}
+                  style={{ marginRight: 3 }}
+                />
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    { color: themeFilter === 'dark' ? '#FFFFFF' : theme.colors.textSecondary },
+                  ]}
+                >
+                  Sombres (4)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Liste déroulante des thèmes filtrés */}
+            <View style={styles.themesList}>
+              {filteredThemes.map((t) => {
+                const isSelected = themeId === t.id;
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[
+                      styles.themeItem,
+                      isSelected && styles.themeItemActive,
+                      {
+                        borderColor: isSelected ? t.colors.accent : theme.colors.border,
+                        backgroundColor: isSelected ? theme.colors.surface : theme.colors.surfaceSubtle,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => changeTheme(t.id)}
+                  >
+                    <View style={styles.themeInfo}>
+                      <View style={styles.themeNameRow}>
+                        <Text
+                          style={[
+                            styles.themeName,
+                            { color: isSelected ? t.colors.accent : theme.colors.textPrimary },
+                            isSelected && { fontWeight: '700' },
+                          ]}
+                        >
+                          {t.name}
+                        </Text>
+                        {isSelected && (
+                          <View style={[styles.activePill, { backgroundColor: t.colors.accent }]}>
+                            <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+                            <Text style={styles.activePillText}>Actif</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.themeTagline, { color: theme.colors.textSecondary }]}>{t.tagline}</Text>
+                    </View>
+
+                    {/* Nuancier 3 pastilles de couleur réelles */}
+                    <View style={styles.themeSwatches}>
+                      <View style={[styles.swatchDot, { backgroundColor: t.colors.background, borderColor: '#777777' }]} />
+                      <View style={[styles.swatchDot, { backgroundColor: t.colors.surfaceSubtle }]} />
+                      <View style={[styles.swatchDot, { backgroundColor: t.colors.accent }]} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Section IA Vision pour les tickets */}
@@ -531,6 +682,75 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderColor: 'rgba(0,0,0,0.12)',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1.5,
+  },
+  dropdownTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dropdownThemeName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  themeTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: THEME.radius.full,
+  },
+  themeTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  dropdownThemeTagline: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  dropdownRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dropdownContent: {
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderLight,
+  },
+  filterTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.radius.full,
+    backgroundColor: THEME.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  filterTabActive: {
+    borderColor: 'transparent',
+  },
+  filterTabText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  filterTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

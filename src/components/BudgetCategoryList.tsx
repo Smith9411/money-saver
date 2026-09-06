@@ -1,5 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, {
+  FadeInDown,
+  LinearTransition,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { THEME } from '../constants/theme';
 import { CategoryBudget } from '../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +17,41 @@ interface BudgetCategoryListProps {
   budgets: CategoryBudget[];
   onViewAll?: () => void;
 }
+
+const AnimatedProgressBar: React.FC<{
+  percentage: number;
+  isWarning: boolean;
+  accentColor: string;
+  warningColor: string;
+  mutedBg: string;
+}> = ({ percentage, isWarning, accentColor, warningColor, mutedBg }) => {
+  const widthAnim = useSharedValue(0);
+
+  useEffect(() => {
+    widthAnim.value = withTiming(Math.min(percentage, 100), {
+      duration: 800,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+    });
+  }, [percentage]);
+
+  const barStyle = useAnimatedStyle(() => ({
+    width: `${widthAnim.value}%`,
+  }));
+
+  return (
+    <View style={[styles.progressBarBackground, { backgroundColor: mutedBg }]}>
+      <Animated.View
+        style={[
+          styles.progressBarFill,
+          {
+            backgroundColor: isWarning ? warningColor : accentColor,
+          },
+          barStyle,
+        ]}
+      />
+    </View>
+  );
+};
 
 export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
   budgets,
@@ -44,81 +87,80 @@ export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
 
       {/* Liste des items de budget */}
       <View style={styles.listContainer}>
-        {budgets.slice(0, 3).map((item) => {
+        {budgets.slice(0, 3).map((item, idx) => {
           const isWarning = item.percentage > 85;
 
           return (
-            <TouchableOpacity
+            <Animated.View
               key={item.category}
-              style={[
-                styles.budgetItem,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                  borderRadius: theme.cardRadius,
-                },
-              ]}
-              activeOpacity={0.8}
-              onPress={onViewAll}
+              entering={FadeInDown.duration(420).delay(idx * 75).springify().damping(15)}
+              layout={LinearTransition.springify().damping(16).stiffness(130)}
             >
-              <View style={styles.topRow}>
-                {/* Icône dans un cercle doux */}
-                <View style={[styles.iconWrapper, { backgroundColor: theme.colors.surfaceSubtle }]}>
-                  <Ionicons
-                    name={getCategoryIcon(item.iconName) as any}
-                    size={18}
-                    color={theme.colors.textPrimary}
-                  />
-                </View>
-
-                {/* Titre & sous-titre */}
-                <View style={styles.infoCol}>
-                  <View style={styles.titleRow}>
-                    <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{item.name}</Text>
-                    <View style={styles.rightStats}>
-                      <TouchableOpacity
-                        activeOpacity={0.6}
-                        style={styles.optionsBtn}
-                        onPress={onViewAll}
-                      >
-                        <Ionicons
-                          name="pencil-outline"
-                          size={14}
-                          color={theme.colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                      <Text
-                        style={[
-                          styles.percentageText,
-                          { color: isWarning ? theme.colors.expenseText : theme.colors.textPrimary },
-                        ]}
-                      >
-                        {item.percentage}%
-                      </Text>
-                    </View>
+              <TouchableOpacity
+                style={[
+                  styles.budgetItem,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.cardRadius,
+                  },
+                ]}
+                activeOpacity={0.8}
+                onPress={onViewAll}
+              >
+                <View style={styles.topRow}>
+                  {/* Icône dans un cercle doux */}
+                  <View style={[styles.iconWrapper, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                    <Ionicons
+                      name={getCategoryIcon(item.iconName) as any}
+                      size={18}
+                      color={theme.colors.textPrimary}
+                    />
                   </View>
 
-                  <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]}>
-                    {item.spent} € dépensés sur {item.budget} €
-                  </Text>
+                  {/* Titre & sous-titre */}
+                  <View style={styles.infoCol}>
+                    <View style={styles.titleRow}>
+                      <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{item.name}</Text>
+                      <View style={styles.rightStats}>
+                        <TouchableOpacity
+                          activeOpacity={0.6}
+                          style={styles.optionsBtn}
+                          onPress={onViewAll}
+                        >
+                          <Ionicons
+                            name="pencil-outline"
+                            size={14}
+                            color={theme.colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+                        <Text
+                          style={[
+                            styles.percentageText,
+                            { color: isWarning ? theme.colors.expenseText : theme.colors.textPrimary },
+                          ]}
+                        >
+                          {item.percentage}%
+                        </Text>
+                      </View>
+                    </View>
 
-                  {/* Barre de progression fine */}
-                  <View style={[styles.progressBarBackground, { backgroundColor: theme.colors.surfaceMuted }]}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${Math.min(item.percentage, 100)}%`,
-                          backgroundColor: isWarning
-                            ? theme.colors.expenseText
-                            : theme.colors.accent,
-                        },
-                      ]}
+                    <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]}>
+                      {item.spent} € dépensés sur {item.budget} €
+                    </Text>
+
+                    {/* Jauge animée fluide */}
+                    <AnimatedProgressBar
+                      percentage={item.percentage}
+                      isWarning={isWarning}
+                      accentColor={theme.colors.accent}
+                      warningColor={theme.colors.expenseText}
+                      mutedBg={theme.colors.surfaceMuted}
                     />
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </Animated.View>
           );
         })}
       </View>

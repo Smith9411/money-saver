@@ -13,6 +13,8 @@ import { THEME } from '../constants/theme';
 import { Transaction, TransactionCategory } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
+import { ParticleBurst } from './ParticleBurst';
 
 interface HistoryModalProps {
   visible: boolean;
@@ -39,9 +41,11 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   onSelectTransaction,
   onDeleteTransaction,
 }) => {
+  const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCat, setSelectedCat] = useState<TransactionCategory | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
+  const [explodingId, setExplodingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return transactions.filter((tx) => {
@@ -155,16 +159,27 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
             filtered.map((tx, idx) => {
               const isIncome = tx.type === 'income';
               const hasReceipt = tx.items && tx.items.length > 0;
+              const isExploding = explodingId === tx.id;
 
               return (
                 <Animated.View
                   key={tx.id}
-                  entering={FadeInDown.duration(200).delay(Math.min(idx * 30, 250))}
-                  exiting={FadeOutUp.duration(180)}
-                  layout={LinearTransition.duration(200)}
+                  entering={FadeInDown.duration(360).springify().damping(15).delay(Math.min(idx * 20, 140))}
+                  exiting={FadeOutUp.duration(280)}
+                  layout={LinearTransition.springify().damping(16).stiffness(130)}
+                  style={{ position: 'relative' }}
                 >
                   <TouchableOpacity
-                    style={styles.txCard}
+                    style={[
+                      styles.txCard,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.border,
+                        borderRadius: theme.cardRadius,
+                        opacity: isExploding ? 0.25 : 1,
+                        transform: [{ scale: isExploding ? 0.92 : 1 }],
+                      },
+                    ]}
                     activeOpacity={0.7}
                     onPress={() => {
                       triggerHaptic('light');
@@ -175,7 +190,9 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                       <View
                         style={[
                           styles.iconBox,
-                          isIncome ? styles.iconBoxIncome : styles.iconBoxExpense,
+                          isIncome
+                            ? { backgroundColor: theme.colors.incomeBg }
+                            : { backgroundColor: theme.colors.surfaceSubtle },
                         ]}
                       >
                         <Ionicons
@@ -187,21 +204,21 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                               : 'card-outline'
                           }
                           size={18}
-                          color={isIncome ? THEME.colors.incomeText : THEME.colors.textPrimary}
+                          color={isIncome ? theme.colors.incomeText : theme.colors.textPrimary}
                         />
                       </View>
 
                       <View style={{ flex: 1 }}>
                         <View style={styles.titleLine}>
-                          <Text style={styles.txTitle}>{tx.title}</Text>
+                          <Text style={[styles.txTitle, { color: theme.colors.textPrimary }]}>{tx.title}</Text>
                           {hasReceipt && (
-                            <View style={styles.receiptTag}>
-                              <Ionicons name="receipt" size={9} color="#111111" />
-                              <Text style={styles.receiptTagText}>Reçu</Text>
+                            <View style={[styles.receiptTag, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                              <Ionicons name="receipt" size={9} color={theme.colors.textPrimary} />
+                              <Text style={[styles.receiptTagText, { color: theme.colors.textPrimary }]}>Reçu</Text>
                             </View>
                           )}
                         </View>
-                        <Text style={styles.txMeta}>
+                        <Text style={[styles.txMeta, { color: theme.colors.textSecondary }]}>
                           {formatDate(tx.date)} {tx.merchant ? `• ${tx.merchant}` : ''}
                         </Text>
                       </View>
@@ -211,7 +228,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                       <Text
                         style={[
                           styles.txAmount,
-                          isIncome ? styles.txAmountIncome : styles.txAmountExpense,
+                          isIncome ? { color: theme.colors.incomeText } : { color: theme.colors.textPrimary },
                         ]}
                       >
                         {isIncome ? '+' : '-'}
@@ -222,14 +239,24 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                         style={styles.trashBtn}
                         onPress={(e) => {
                           e.stopPropagation?.();
-                          triggerHaptic('medium');
-                          onDeleteTransaction(tx.id);
+                          triggerHaptic('heavy');
+                          setExplodingId(tx.id);
                         }}
                       >
-                        <Ionicons name="close-circle" size={16} color={THEME.colors.textMuted} />
+                        <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
+
+                  {isExploding && (
+                    <ParticleBurst
+                      color={isIncome ? theme.colors.incomeText : theme.colors.expenseText}
+                      onComplete={() => {
+                        onDeleteTransaction(tx.id);
+                        setExplodingId(null);
+                      }}
+                    />
+                  )}
                 </Animated.View>
               );
             })

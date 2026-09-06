@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { THEME } from '../constants/theme';
 import { Transaction } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { triggerHaptic } from '../services/haptics';
+import { ParticleBurst } from './ParticleBurst';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -19,6 +21,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onTransactionPress,
   onViewAll,
 }) => {
+  const [explodingId, setExplodingId] = useState<string | null>(null);
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'food':
@@ -68,13 +71,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           transactions.slice(0, 7).map((tx, idx) => {
             const isIncome = tx.type === 'income';
             const hasReceiptItems = tx.items && tx.items.length > 0;
+            const isExploding = explodingId === tx.id;
 
             return (
               <Animated.View
                 key={tx.id}
-                entering={FadeInDown.duration(220).delay(Math.min(idx * 20, 160))}
-                exiting={FadeOutUp.duration(180)}
-                layout={LinearTransition.duration(240)}
+                entering={FadeInDown.duration(380).springify().damping(15)}
+                exiting={FadeOutUp.duration(300)}
+                layout={LinearTransition.springify().damping(16).stiffness(130)}
+                style={{ position: 'relative' }}
               >
                 <TouchableOpacity
                   style={[
@@ -83,6 +88,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       backgroundColor: theme.colors.surface,
                       borderColor: theme.colors.border,
                       borderRadius: theme.cardRadius,
+                      opacity: isExploding ? 0.25 : 1,
+                      transform: [{ scale: isExploding ? 0.92 : 1 }],
                     },
                   ]}
                   activeOpacity={0.7}
@@ -137,7 +144,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       <TouchableOpacity
                         onPress={(e) => {
                           e.stopPropagation?.();
-                          onDeleteTransaction(tx.id);
+                          triggerHaptic('heavy');
+                          setExplodingId(tx.id);
                         }}
                         style={styles.deleteBtn}
                         activeOpacity={0.6}
@@ -147,6 +155,16 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     )}
                   </View>
                 </TouchableOpacity>
+
+                {isExploding && (
+                  <ParticleBurst
+                    color={isIncome ? theme.colors.incomeText : theme.colors.expenseText}
+                    onComplete={() => {
+                      onDeleteTransaction?.(tx.id);
+                      setExplodingId(null);
+                    }}
+                  />
+                )}
               </Animated.View>
             );
           })
