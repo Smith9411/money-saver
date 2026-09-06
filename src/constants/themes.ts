@@ -7,7 +7,8 @@ export type ThemeId =
   | 'obsidian-gold'
   | 'midnight-titanium'
   | 'emerald-noir'
-  | 'nordic-night';
+  | 'nordic-night'
+  | 'amethyst-velvet';
 
 export interface AppTheme {
   id: ThemeId;
@@ -270,5 +271,31 @@ export const THEMES: Record<ThemeId, AppTheme> = {
       expenseText: '#FB7185',
     },
     cardRadius: 20,
+  },
+
+  'amethyst-velvet': {
+    id: 'amethyst-velvet',
+    name: 'Amethyst Velvet',
+    tagline: 'Noir ébène velouté, améthyste impériale & reflets lilas',
+    isDark: true,
+    type: 'dark',
+    colors: {
+      background: '#0D0B14',
+      surface: '#171422',
+      surfaceSubtle: '#221E32',
+      surfaceMuted: '#302A46',
+      textPrimary: '#F7F5FC',
+      textSecondary: '#ADA5C3',
+      textMuted: '#736B88',
+      border: '#2E2742',
+      borderLight: '#211B32',
+      accent: '#A855F7', // Violet améthyste impérial vibrant
+      accentSubtle: '#2B1A40',
+      incomeBg: '#0C271B',
+      incomeText: '#34D399',
+      expenseBg: '#381328',
+      expenseText: '#F472B6',
+    },
+    cardRadius: 22,
   },
 };

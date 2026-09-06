@@ -31,6 +31,7 @@ const CATEGORY_FILTERS: { label: string; value: TransactionCategory | 'all' }[] 
   { label: 'Shopping', value: 'shopping' },
   { label: 'Logement', value: 'housing' },
   { label: 'Loisirs', value: 'leisure' },
+  { label: 'Études', value: 'education' },
   { label: 'Salaire', value: 'salary' },
 ];
 

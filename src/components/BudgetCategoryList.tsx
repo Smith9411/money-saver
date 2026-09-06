@@ -70,6 +70,8 @@ export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
         return 'bag-handle-outline';
       case 'play-circle':
         return 'film-outline';
+      case 'school':
+        return 'school-outline';
       default:
         return 'wallet-outline';
     }

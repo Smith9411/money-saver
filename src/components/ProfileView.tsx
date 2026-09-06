@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { getApiKey, setApiKey } from '../services/aiReceiptScanner';
@@ -18,7 +20,9 @@ interface ProfileViewProps {
   onBack: () => void;
   transactionsCount: number;
   userName: string;
+  userAvatar?: string | null;
   onSaveUserName: (name: string) => void;
+  onSaveUserAvatar: (uri: string | null) => void;
   onResetAllData: () => void;
 }
 
@@ -26,7 +30,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onBack,
   transactionsCount,
   userName,
+  userAvatar,
   onSaveUserName,
+  onSaveUserAvatar,
   onResetAllData,
 }) => {
   const { theme, themeId, changeTheme, availableThemes } = useTheme();
@@ -42,6 +48,74 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (themeFilter === 'dark') return t.isDark;
     return true;
   });
+
+  const pickImageFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'Veuillez autoriser l’accès à votre galerie pour ajouter une photo de profil.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        triggerHaptic('success');
+        onSaveUserAvatar(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn('Error picking image:', e);
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'Veuillez autoriser l’accès à l’appareil photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        triggerHaptic('success');
+        onSaveUserAvatar(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn('Error taking photo:', e);
+    }
+  };
+
+  const handleAvatarPress = () => {
+    triggerHaptic('light');
+    Alert.alert(
+      'Photo de profil',
+      'Personnalisez votre photo de profil :',
+      [
+        { text: 'Choisir dans la galerie', onPress: pickImageFromGallery },
+        { text: 'Prendre une photo', onPress: takePhotoWithCamera },
+        ...(userAvatar
+          ? [
+              {
+                text: 'Supprimer la photo',
+                style: 'destructive' as const,
+                onPress: () => {
+                  triggerHaptic('medium');
+                  onSaveUserAvatar(null);
+                },
+              },
+            ]
+          : []),
+        { text: 'Annuler', style: 'cancel' as const },
+      ]
+    );
+  };
 
   const handleSaveName = () => {
     triggerHaptic('success');
@@ -109,13 +183,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           },
         ]}
       >
-        <View style={[styles.avatarLarge, { backgroundColor: theme.colors.accent }]}>
-          <Ionicons
-            name="person"
-            size={32}
-            color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
-          />
-        </View>
+        <TouchableOpacity
+          style={styles.avatarTouchable}
+          activeOpacity={0.8}
+          onPress={handleAvatarPress}
+        >
+          {userAvatar ? (
+            <Image source={{ uri: userAvatar }} style={styles.avatarImageLarge} />
+          ) : (
+            <View style={[styles.avatarLarge, { backgroundColor: theme.colors.accent }]}>
+              <Ionicons
+                name="person"
+                size={32}
+                color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+              />
+            </View>
+          )}
+          <View
+            style={[
+              styles.avatarEditBadge,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="camera" size={13} color={theme.colors.textPrimary} />
+          </View>
+        </TouchableOpacity>
 
         {isEditingName ? (
           <View style={styles.nameEditBox}>
@@ -182,7 +277,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <View style={{ flex: 1 }}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Ambiance & Thèmes</Text>
             <Text style={[styles.sectionDesc, { color: theme.colors.textSecondary }]}>
-              {availableThemes.length} styles • 5 Clairs & 4 Sombres
+              {availableThemes.length} styles • 5 Clairs & 5 Sombres
             </Text>
           </View>
         </View>
@@ -320,7 +415,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     { color: themeFilter === 'dark' ? '#FFFFFF' : theme.colors.textSecondary },
                   ]}
                 >
-                  Sombres (4)
+                  Sombres (5)
                 </Text>
               </TouchableOpacity>
             </View>
@@ -531,6 +626,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...THEME.shadows.subtle,
   },
+  avatarTouchable: {
+    position: 'relative',
+    marginBottom: 12,
+  },
   avatarLarge: {
     width: 68,
     height: 68,
@@ -538,7 +637,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#18181B',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+  },
+  avatarImageLarge: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    ...THEME.shadows.subtle,
   },
   nameRow: {
     flexDirection: 'row',

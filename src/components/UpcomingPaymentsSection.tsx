@@ -27,6 +27,8 @@ export const UpcomingPaymentsSection: React.FC<UpcomingPaymentsSectionProps> = (
         return 'film-outline';
       case 'transport':
         return 'car-outline';
+      case 'education':
+        return 'school-outline';
       case 'salary':
         return 'cash-outline';
       default:

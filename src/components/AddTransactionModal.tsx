@@ -36,6 +36,7 @@ const CATEGORIES: { label: string; value: TransactionCategory; icon: string }[] 
   { label: 'Shopping', value: 'shopping', icon: 'bag-handle-outline' },
   { label: 'Logement', value: 'housing', icon: 'home-outline' },
   { label: 'Loisirs', value: 'leisure', icon: 'film-outline' },
+  { label: 'Études', value: 'education', icon: 'school-outline' },
   { label: 'Salaire', value: 'salary', icon: 'cash-outline' },
   { label: 'Freelance', value: 'freelance', icon: 'laptop-outline' },
   { label: 'Autre', value: 'other', icon: 'ellipsis-horizontal-outline' },

@@ -290,6 +290,7 @@ export function getCategoryBudgets(
     transport: { name: 'Transports & Mobilité', budget: customBudgets?.transport || 150, icon: 'navigation', color: '#111111' },
     shopping: { name: 'Shopping & Équipement', budget: customBudgets?.shopping || 250, icon: 'shopping-bag', color: '#111111' },
     leisure: { name: 'Loisirs & Abonnements', budget: customBudgets?.leisure || 120, icon: 'play-circle', color: '#111111' },
+    education: { name: 'Études & Formations', budget: customBudgets?.education || 100, icon: 'school', color: '#111111' },
   };
 
   const spentPerCat: Record<string, number> = {};

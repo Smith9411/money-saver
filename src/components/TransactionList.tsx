@@ -34,6 +34,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         return 'bag-handle-outline';
       case 'leisure':
         return 'film-outline';
+      case 'education':
+        return 'school-outline';
       case 'salary':
       case 'freelance':
         return 'arrow-down-circle-outline';

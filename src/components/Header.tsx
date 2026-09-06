@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -11,6 +11,7 @@ interface HeaderProps {
   onProfilePress?: () => void;
   dateText?: string;
   userName?: string;
+  userAvatar?: string | null;
 }
 
 const getTodayDateString = () => {
@@ -34,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   onProfilePress,
   dateText,
   userName = '',
+  userAvatar,
 }) => {
   const { theme } = useTheme();
   const displayDate = dateText || getTodayDateString();
@@ -47,11 +49,18 @@ export const Header: React.FC<HeaderProps> = ({
           activeOpacity={0.8}
           onPress={onProfilePress}
         >
-          <View style={[styles.avatarContainer, { borderColor: theme.colors.surface, backgroundColor: theme.colors.accent }]}>
-            {/* Silhouette / Avatar ultra élégant */}
-            <View style={[styles.avatarInner, { backgroundColor: theme.colors.accent }]}>
-              <Ionicons name="person" size={20} color="#FFFFFF" />
-            </View>
+          <View style={[styles.avatarContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.accent }]}>
+            {userAvatar ? (
+              <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarInner, { backgroundColor: theme.colors.accent }]}>
+                <Ionicons
+                  name="person"
+                  size={20}
+                  color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+                />
+              </View>
+            )}
           </View>
         </TouchableOpacity>
 
@@ -114,6 +123,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#18181B',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
   },
   actionButtons: {
     flexDirection: 'row',

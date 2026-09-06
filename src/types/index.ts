@@ -6,6 +6,7 @@ export type TransactionCategory =
   | 'shopping'
   | 'housing'
   | 'leisure'
+  | 'education'
   | 'salary'
   | 'freelance'
   | 'investment'

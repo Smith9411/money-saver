@@ -46,6 +46,7 @@ export default function Index() {
   const [period, setPeriod] = useState<TimePeriod>('week');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [userName, setUserName] = useState<string | null>(null); // null = en chargement, '' = onboarding requis
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -61,6 +62,8 @@ export default function Index() {
     setTransactions(loaded);
     const savedName = await getSetting('user_name', '');
     setUserName(savedName);
+    const savedAvatar = await getSetting('user_avatar', '');
+    setUserAvatar(savedAvatar || null);
 
     // Charger les plafonds personnalisés de budget
     const foodB = await getSetting('budget_food', '400');
@@ -68,12 +71,14 @@ export default function Index() {
     const transportB = await getSetting('budget_transport', '150');
     const shoppingB = await getSetting('budget_shopping', '250');
     const leisureB = await getSetting('budget_leisure', '120');
+    const educationB = await getSetting('budget_education', '100');
     setCustomBudgets({
       food: parseInt(foodB, 10) || 400,
       housing: parseInt(housingB, 10) || 900,
       transport: parseInt(transportB, 10) || 150,
       shopping: parseInt(shoppingB, 10) || 250,
       leisure: parseInt(leisureB, 10) || 120,
+      education: parseInt(educationB, 10) || 100,
     });
   };
 
@@ -112,6 +117,12 @@ export default function Index() {
     await setSetting('user_name', name);
   };
 
+  // Enregistrer la photo de profil dans SQLite
+  const handleSaveUserAvatar = async (uri: string | null) => {
+    setUserAvatar(uri);
+    await setSetting('user_avatar', uri || '');
+  };
+
   // Mettre à jour le plafond d'un budget dans SQLite
   const handleUpdateBudget = async (category: TransactionCategory, newBudget: number) => {
     setCustomBudgets((prev) => ({ ...prev, [category]: newBudget }));
@@ -122,7 +133,9 @@ export default function Index() {
   const handleResetAllData = async () => {
     await resetAllData();
     await setSetting('user_name', '');
+    await setSetting('user_avatar', '');
     setUserName('');
+    setUserAvatar(null);
     setTransactions([]);
     setSelectedTxForReceipt(null);
     setCurrentTab('home');
@@ -192,7 +205,9 @@ export default function Index() {
             onBack={() => setCurrentTab('home')}
             transactionsCount={transactions.length}
             userName={userName}
+            userAvatar={userAvatar}
             onSaveUserName={handleSaveUserName}
+            onSaveUserAvatar={handleSaveUserAvatar}
             onResetAllData={handleResetAllData}
           />
         ) : currentTab === 'analytics' ? (
@@ -221,6 +236,7 @@ export default function Index() {
               onCalendarPress={() => setIsHistoryOpen(true)}
               onProfilePress={() => setCurrentTab('profile')}
               userName={userName}
+              userAvatar={userAvatar}
             />
 
             {/* 2. Métriques clés en pilule (Dépenses, Revenus) */}
