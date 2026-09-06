@@ -3,10 +3,12 @@ import {
   View,
   StyleSheet,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../constants/theme';
 import { Transaction, TimePeriod, TransactionCategory, TransactionType } from '../types';
+import { triggerHaptic } from '../services/haptics';
 import {
   initDatabase,
   getTransactions,
@@ -50,33 +52,44 @@ export default function Index() {
   const [isBudgetManagerOpen, setIsBudgetManagerOpen] = useState(false);
   const [customBudgets, setCustomBudgets] = useState<Record<string, number>>({});
   const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    await initDatabase();
+    await initApiKey();
+    const loaded = await getTransactions();
+    setTransactions(loaded);
+    const savedName = await getSetting('user_name', '');
+    setUserName(savedName);
+
+    // Charger les plafonds personnalisés de budget
+    const foodB = await getSetting('budget_food', '400');
+    const housingB = await getSetting('budget_housing', '900');
+    const transportB = await getSetting('budget_transport', '150');
+    const shoppingB = await getSetting('budget_shopping', '250');
+    const leisureB = await getSetting('budget_leisure', '120');
+    setCustomBudgets({
+      food: parseInt(foodB, 10) || 400,
+      housing: parseInt(housingB, 10) || 900,
+      transport: parseInt(transportB, 10) || 150,
+      shopping: parseInt(shoppingB, 10) || 250,
+      leisure: parseInt(leisureB, 10) || 120,
+    });
+  };
 
   // Initialisation de la base SQLite et de la clé d'API
   useEffect(() => {
-    const loadData = async () => {
-      await initDatabase();
-      await initApiKey();
-      const loaded = await getTransactions();
-      setTransactions(loaded);
-      const savedName = await getSetting('user_name', '');
-      setUserName(savedName);
-
-      // Charger les plafonds personnalisés de budget
-      const foodB = await getSetting('budget_food', '400');
-      const housingB = await getSetting('budget_housing', '900');
-      const transportB = await getSetting('budget_transport', '150');
-      const shoppingB = await getSetting('budget_shopping', '250');
-      const leisureB = await getSetting('budget_leisure', '120');
-      setCustomBudgets({
-        food: parseInt(foodB, 10) || 400,
-        housing: parseInt(housingB, 10) || 900,
-        transport: parseInt(transportB, 10) || 150,
-        shopping: parseInt(shoppingB, 10) || 250,
-        leisure: parseInt(leisureB, 10) || 120,
-      });
-    };
     loadData();
   }, []);
+
+  // Pull-to-refresh avec retour haptique
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    triggerHaptic('light');
+    await loadData();
+    setRefreshing(false);
+    triggerHaptic('success');
+  };
 
   // Calcul des statistiques selon la période
   const stats = useMemo(() => {
@@ -194,6 +207,14 @@ export default function Index() {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={theme.colors.accent}
+                colors={[theme.colors.accent]}
+              />
+            }
           >
             {/* 1. Header minimaliste */}
             <Header
@@ -303,6 +324,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
 });

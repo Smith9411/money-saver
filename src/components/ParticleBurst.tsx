@@ -46,7 +46,7 @@ export const ParticleBurst: React.FC<ParticleBurstProps> = ({
     progress.value = withTiming(
       1,
       {
-        duration: 400,
+        duration: 260,
         easing: Easing.out(Easing.cubic),
       },
       (finished) => {

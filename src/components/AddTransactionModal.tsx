@@ -14,6 +14,8 @@ import { THEME } from '../constants/theme';
 import { TransactionCategory, TransactionType } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTheme } from '../context/ThemeContext';
+
 interface AddTransactionModalProps {
   visible: boolean;
   onClose: () => void;
@@ -44,6 +46,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   onClose,
   onAdd,
 }) => {
+  const { theme } = useTheme();
   const [type, setType] = useState<TransactionType>('expense');
   const [amountStr, setAmountStr] = useState<string>('');
   const [title, setTitle] = useState<string>('');
@@ -94,25 +97,38 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           onPress={onClose}
         />
 
-        <View style={styles.sheetContainer}>
+        <View
+          style={[
+            styles.sheetContainer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+              borderLeftColor: theme.colors.border,
+              borderRightColor: theme.colors.border,
+            },
+          ]}
+        >
           {/* Petite barre de poignée en haut */}
-          <View style={styles.dragHandle} />
+          <View style={[styles.dragHandle, { backgroundColor: theme.colors.border }]} />
 
           {/* En-tête */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Nouvelle transaction</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={THEME.colors.textPrimary} />
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>Nouvelle transaction</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              style={[styles.closeBtn, { backgroundColor: theme.colors.surfaceSubtle }]}
+            >
+              <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Toggle Type: Dépense / Revenu */}
-            <View style={styles.typeToggle}>
+            <View style={[styles.typeToggle, { backgroundColor: theme.colors.surfaceSubtle }]}>
               <TouchableOpacity
                 style={[
                   styles.typeBtn,
-                  type === 'expense' && styles.typeBtnActiveExpense,
+                  type === 'expense' && { backgroundColor: theme.colors.accent },
                 ]}
                 activeOpacity={0.7}
                 onPress={() => setType('expense')}
@@ -120,7 +136,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <Text
                   style={[
                     styles.typeBtnText,
-                    type === 'expense' && styles.typeBtnTextActive,
+                    {
+                      color: type === 'expense'
+                        ? theme.isDark && theme.id === 'midnight-titanium'
+                          ? '#000000'
+                          : '#FFFFFF'
+                        : theme.colors.textSecondary,
+                      fontWeight: type === 'expense' ? '700' : '500',
+                    },
                   ]}
                 >
                   Dépense (Sortie)
@@ -130,7 +153,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.typeBtn,
-                  type === 'income' && styles.typeBtnActiveIncome,
+                  type === 'income' && { backgroundColor: theme.colors.incomeText },
                 ]}
                 activeOpacity={0.7}
                 onPress={() => setType('income')}
@@ -138,7 +161,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <Text
                   style={[
                     styles.typeBtnText,
-                    type === 'income' && styles.typeBtnTextActive,
+                    {
+                      color: type === 'income' ? '#FFFFFF' : theme.colors.textSecondary,
+                      fontWeight: type === 'income' ? '700' : '500',
+                    },
                   ]}
                 >
                   Revenu (Entrée)
@@ -146,13 +172,21 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Saisie géante du montant */}
-            <View style={styles.amountInputWrapper}>
-              <Text style={styles.currencyPrefix}>€</Text>
+            {/* Saisie du montant */}
+            <View
+              style={[
+                styles.amountInputWrapper,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.currencyPrefix, { color: theme.colors.textSecondary }]}>€</Text>
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { color: theme.colors.textPrimary }]}
                 placeholder="0.00"
-                placeholderTextColor={THEME.colors.textMuted}
+                placeholderTextColor={theme.colors.textMuted}
                 keyboardType="decimal-pad"
                 value={amountStr}
                 onChangeText={setAmountStr}
@@ -162,11 +196,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
             {/* Champ Titre */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Titre ou Commerce</Text>
+              <Text style={[styles.fieldLabel, { color: theme.colors.textSecondary }]}>Titre ou Commerce</Text>
               <TextInput
-                style={styles.textInput}
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.colors.surfaceSubtle,
+                    borderColor: theme.colors.border,
+                    color: theme.colors.textPrimary,
+                  },
+                ]}
                 placeholder="ex: Monoprix, Salaire, Café..."
-                placeholderTextColor={THEME.colors.textMuted}
+                placeholderTextColor={theme.colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
@@ -174,7 +215,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
             {/* Sélecteur de Catégorie */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Catégorie</Text>
+              <Text style={[styles.fieldLabel, { color: theme.colors.textSecondary }]}>Catégorie</Text>
               <View style={styles.categoriesGrid}>
                 {CATEGORIES.map((cat) => {
                   const isSelected = category === cat.value;
@@ -183,7 +224,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       key={cat.value}
                       style={[
                         styles.catPill,
-                        isSelected && styles.catPillSelected,
+                        {
+                          backgroundColor: isSelected ? theme.colors.accent : theme.colors.surfaceSubtle,
+                          borderColor: isSelected ? theme.colors.accent : theme.colors.border,
+                        },
                       ]}
                       activeOpacity={0.7}
                       onPress={() => setCategory(cat.value)}
@@ -192,13 +236,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                         name={cat.icon as any}
                         size={15}
                         color={
-                          isSelected ? '#FFFFFF' : THEME.colors.textPrimary
+                          isSelected
+                            ? theme.isDark && theme.id === 'midnight-titanium'
+                              ? '#000000'
+                              : '#FFFFFF'
+                            : theme.colors.textPrimary
                         }
                       />
                       <Text
                         style={[
                           styles.catPillText,
-                          isSelected && styles.catPillTextSelected,
+                          {
+                            color: isSelected
+                              ? theme.isDark && theme.id === 'midnight-titanium'
+                                ? '#000000'
+                                : '#FFFFFF'
+                              : theme.colors.textPrimary,
+                            fontWeight: isSelected ? '700' : '500',
+                          },
                         ]}
                       >
                         {cat.label}
@@ -210,28 +265,38 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </View>
 
             {/* Option Récurrence mensuelle */}
-            <View style={styles.recurringBox}>
+            <View
+              style={[
+                styles.recurringBox,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.recurringRow}
                 activeOpacity={0.7}
                 onPress={() => setIsRecurring(!isRecurring)}
               >
                 <View style={styles.recurringInfo}>
-                  <Text style={styles.recurringTitle}>Paiement récurrent mensuel</Text>
-                  <Text style={styles.recurringSub}>
+                  <Text style={[styles.recurringTitle, { color: theme.colors.textPrimary }]}>
+                    Paiement récurrent mensuel
+                  </Text>
+                  <Text style={[styles.recurringSub, { color: theme.colors.textSecondary }]}>
                     Loyer, abonnements, salaire prélevé chaque mois
                   </Text>
                 </View>
                 <View
                   style={[
                     styles.recurringSwitch,
-                    isRecurring && styles.recurringSwitchActive,
+                    { backgroundColor: isRecurring ? theme.colors.accent : theme.colors.surfaceMuted },
                   ]}
                 >
                   <View
                     style={[
                       styles.recurringThumb,
-                      isRecurring && styles.recurringThumbActive,
+                      isRecurring && [styles.recurringThumbActive, { backgroundColor: theme.colors.surface }],
                     ]}
                   />
                 </View>
@@ -239,20 +304,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
               {isRecurring && (
                 <View style={styles.daySelectorRow}>
-                  <Text style={styles.dayLabel}>Jour du prélèvement dans le mois :</Text>
+                  <Text style={[styles.dayLabel, { color: theme.colors.textSecondary }]}>
+                    Jour du prélèvement dans le mois :
+                  </Text>
                   <View style={styles.dayControl}>
                     <TouchableOpacity
-                      style={styles.dayBtn}
+                      style={[styles.dayBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                       onPress={() => setRecurringDay(Math.max(1, recurringDay - 1))}
                     >
-                      <Ionicons name="remove" size={16} color={THEME.colors.textPrimary} />
+                      <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
                     </TouchableOpacity>
-                    <Text style={styles.dayValueText}>Le {recurringDay}</Text>
+                    <Text style={[styles.dayValueText, { color: theme.colors.textPrimary }]}>
+                      Le {recurringDay}
+                    </Text>
                     <TouchableOpacity
-                      style={styles.dayBtn}
+                      style={[styles.dayBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
                       onPress={() => setRecurringDay(Math.min(31, recurringDay + 1))}
                     >
-                      <Ionicons name="add" size={16} color={THEME.colors.textPrimary} />
+                      <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -261,11 +330,22 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
             {/* Bouton de confirmation */}
             <TouchableOpacity
-              style={styles.submitButton}
+              style={[styles.submitButton, { backgroundColor: theme.colors.accent }]}
               activeOpacity={0.85}
               onPress={handleSubmit}
             >
-              <Text style={styles.submitButtonText}>Ajouter la transaction</Text>
+              <Text
+                style={[
+                  styles.submitButtonText,
+                  {
+                    color: theme.isDark && theme.id === 'midnight-titanium'
+                      ? '#000000'
+                      : '#FFFFFF',
+                  },
+                ]}
+              >
+                Ajouter la transaction
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

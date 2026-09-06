@@ -31,9 +31,20 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     onAddPress();
   };
 
+  const activeColor = theme.colors.accent;
+  const inactiveColor = theme.colors.textSecondary;
+
   return (
     <View style={styles.floatingWrapper}>
-      <View style={[styles.navBar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <View
+        style={[
+          styles.navBar,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
         {/* Onglet 1: Accueil */}
         <TouchableOpacity
           style={styles.navItem}
@@ -43,13 +54,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'home' ? 'home' : 'home-outline'}
             size={22}
-            color={currentTab === 'home' ? theme.colors.accent : theme.colors.textSecondary}
+            color={currentTab === 'home' ? activeColor : inactiveColor}
           />
           <Text
             style={[
               styles.navLabel,
-              { color: currentTab === 'home' ? theme.colors.accent : theme.colors.textSecondary },
-              currentTab === 'home' && styles.navLabelActive,
+              {
+                color: currentTab === 'home' ? activeColor : inactiveColor,
+                fontWeight: currentTab === 'home' ? '700' : '500',
+              },
             ]}
           >
             Accueil
@@ -65,13 +78,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'analytics' ? 'bar-chart' : 'bar-chart-outline'}
             size={22}
-            color={currentTab === 'analytics' ? theme.colors.accent : theme.colors.textSecondary}
+            color={currentTab === 'analytics' ? activeColor : inactiveColor}
           />
           <Text
             style={[
               styles.navLabel,
-              { color: currentTab === 'analytics' ? theme.colors.accent : theme.colors.textSecondary },
-              currentTab === 'analytics' && styles.navLabelActive,
+              {
+                color: currentTab === 'analytics' ? activeColor : inactiveColor,
+                fontWeight: currentTab === 'analytics' ? '700' : '500',
+              },
             ]}
           >
             Analyses
@@ -80,12 +95,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
         {/* Bouton Central Flottant avec couleur d'accent du thème */}
         <TouchableOpacity
-          style={[styles.centerButton, { backgroundColor: theme.colors.accent }]}
+          style={[styles.centerButton, { backgroundColor: activeColor }]}
           activeOpacity={0.85}
           onPress={handleAddPress}
         >
           <View style={styles.centerButtonInner}>
-            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+            <Ionicons
+              name="sparkles"
+              size={20}
+              color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+            />
           </View>
         </TouchableOpacity>
 
@@ -98,13 +117,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'scanner' ? 'scan' : 'scan-outline'}
             size={22}
-            color={currentTab === 'scanner' ? theme.colors.accent : theme.colors.textSecondary}
+            color={currentTab === 'scanner' ? activeColor : inactiveColor}
           />
           <Text
             style={[
               styles.navLabel,
-              { color: currentTab === 'scanner' ? theme.colors.accent : theme.colors.textSecondary },
-              currentTab === 'scanner' && styles.navLabelActive,
+              {
+                color: currentTab === 'scanner' ? activeColor : inactiveColor,
+                fontWeight: currentTab === 'scanner' ? '700' : '500',
+              },
             ]}
           >
             Scanner
@@ -120,13 +141,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <Ionicons
             name={currentTab === 'profile' ? 'person' : 'person-outline'}
             size={22}
-            color={currentTab === 'profile' ? theme.colors.accent : theme.colors.textSecondary}
+            color={currentTab === 'profile' ? activeColor : inactiveColor}
           />
           <Text
             style={[
               styles.navLabel,
-              { color: currentTab === 'profile' ? theme.colors.accent : theme.colors.textSecondary },
-              currentTab === 'profile' && styles.navLabelActive,
+              {
+                color: currentTab === 'profile' ? activeColor : inactiveColor,
+                fontWeight: currentTab === 'profile' ? '700' : '500',
+              },
             ]}
           >
             Profil
@@ -150,14 +173,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     height: 70,
-    backgroundColor: '#FFFFFF',
     borderRadius: 36,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#ECECEE',
     ...THEME.shadows.floating,
   },
   navItem: {
@@ -168,19 +189,12 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontSize: 10,
-    fontWeight: '500',
-    color: THEME.colors.textSecondary,
     marginTop: 3,
-  },
-  navLabelActive: {
-    color: THEME.colors.textPrimary,
-    fontWeight: '700',
   },
   centerButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
     ...THEME.shadows.subtle,
@@ -191,3 +205,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+

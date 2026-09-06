@@ -29,8 +29,8 @@ const AnimatedProgressBar: React.FC<{
 
   useEffect(() => {
     widthAnim.value = withTiming(Math.min(percentage, 100), {
-      duration: 800,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
     });
   }, [percentage]);
 
@@ -93,8 +93,8 @@ export const BudgetCategoryList: React.FC<BudgetCategoryListProps> = ({
           return (
             <Animated.View
               key={item.category}
-              entering={FadeInDown.duration(420).delay(idx * 75).springify().damping(15)}
-              layout={LinearTransition.springify().damping(16).stiffness(130)}
+              entering={FadeInDown.duration(200).delay(idx * 30).springify().damping(22)}
+              layout={LinearTransition.springify().damping(18).stiffness(140)}
             >
               <TouchableOpacity
                 style={[

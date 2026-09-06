@@ -13,6 +13,7 @@ import { THEME } from '../constants/theme';
 import { CategoryBudget, TransactionCategory } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 interface BudgetManagerModalProps {
   visible: boolean;
@@ -27,6 +28,7 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
   budgets,
   onUpdateBudget,
 }) => {
+  const { theme } = useTheme();
   const [editingCategory, setEditingCategory] = useState<TransactionCategory | null>(null);
   const [budgetInput, setBudgetInput] = useState('');
 
@@ -49,17 +51,21 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* En-tête */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={THEME.colors.textPrimary} />
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.backBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Gestion des budgets</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Gestion des budgets</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        <Text style={styles.leadText}>
+        <Text style={[styles.leadText, { color: theme.colors.textSecondary }]}>
           Personnalisez les plafonds de dépenses pour chaque catégorie. Touchez un budget pour le modifier.
         </Text>
 
@@ -70,11 +76,21 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
               const isWarning = b.percentage > 85;
 
               return (
-                <View key={b.category} style={styles.budgetCard}>
+                <View
+                  key={b.category}
+                  style={[
+                    styles.budgetCard,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.cardRadius,
+                    },
+                  ]}
+                >
                   <View style={styles.cardTop}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.catName}>{b.name}</Text>
-                      <Text style={styles.catSpent}>
+                      <Text style={[styles.catName, { color: theme.colors.textPrimary }]}>{b.name}</Text>
+                      <Text style={[styles.catSpent, { color: theme.colors.textSecondary }]}>
                         {b.spent.toFixed(2)} € dépensés
                       </Text>
                     </View>
@@ -82,52 +98,77 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
                     {isEditing ? (
                       <View style={styles.editRow}>
                         <TextInput
-                          style={styles.editInput}
+                          style={[
+                            styles.editInput,
+                            {
+                              backgroundColor: theme.colors.surfaceSubtle,
+                              color: theme.colors.textPrimary,
+                              borderColor: theme.colors.accent,
+                            },
+                          ]}
                           value={budgetInput}
                           onChangeText={setBudgetInput}
                           keyboardType="numeric"
                           autoFocus
                         />
-                        <Text style={styles.editCurrency}>€</Text>
+                        <Text style={[styles.editCurrency, { color: theme.colors.textPrimary }]}>€</Text>
                         <TouchableOpacity
-                          style={styles.saveBtn}
+                          style={[styles.saveBtn, { backgroundColor: theme.colors.accent }]}
                           onPress={() => handleSaveBudget(b.category)}
                         >
-                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          <Ionicons
+                            name="checkmark"
+                            size={16}
+                            color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+                          />
                         </TouchableOpacity>
                       </View>
                     ) : (
                       <TouchableOpacity
-                        style={styles.budgetPill}
+                        style={[
+                          styles.budgetPill,
+                          {
+                            backgroundColor: theme.colors.surfaceSubtle,
+                            borderColor: theme.colors.border,
+                          },
+                        ]}
                         activeOpacity={0.7}
                         onPress={() => handleStartEdit(b)}
                       >
-                        <Text style={styles.budgetPillText}>Plafond : {b.budget} €</Text>
-                        <Ionicons name="pencil" size={11} color={THEME.colors.textSecondary} style={{ marginLeft: 4 }} />
+                        <Text style={[styles.budgetPillText, { color: theme.colors.textPrimary }]}>
+                          Plafond : {b.budget} €
+                        </Text>
+                        <Ionicons name="pencil" size={11} color={theme.colors.textSecondary} style={{ marginLeft: 4 }} />
                       </TouchableOpacity>
                     )}
                   </View>
 
                   {/* Jauge fine */}
-                  <View style={styles.progressBackground}>
+                  <View style={[styles.progressBackground, { backgroundColor: theme.colors.surfaceMuted }]}>
                     <View
                       style={[
                         styles.progressFill,
                         {
                           width: `${Math.min(b.percentage, 100)}%`,
                           backgroundColor: isWarning
-                            ? THEME.colors.expenseText
-                            : THEME.colors.textPrimary,
+                            ? theme.colors.expenseText
+                            : theme.colors.accent,
                         },
                       ]}
                     />
                   </View>
 
                   <View style={styles.cardBottom}>
-                    <Text style={[styles.percentageText, isWarning && styles.warningText]}>
+                    <Text
+                      style={[
+                        styles.percentageText,
+                        { color: theme.colors.textSecondary },
+                        isWarning && { color: theme.colors.expenseText, fontWeight: '700' },
+                      ]}
+                    >
                       {b.percentage}% du plafond utilisé
                     </Text>
-                    <Text style={styles.remainingText}>
+                    <Text style={[styles.remainingText, { color: theme.colors.textPrimary }]}>
                       Reste : {Math.max(0, b.budget - b.spent).toFixed(2)} €
                     </Text>
                   </View>

@@ -76,9 +76,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             return (
               <Animated.View
                 key={tx.id}
-                entering={FadeInDown.duration(380).springify().damping(15)}
-                exiting={FadeOutUp.duration(300)}
-                layout={LinearTransition.springify().damping(16).stiffness(130)}
+                entering={FadeInDown.duration(200).springify().damping(22)}
+                exiting={FadeOutUp.duration(160)}
+                layout={LinearTransition.springify().damping(18).stiffness(140)}
                 style={{ position: 'relative' }}
               >
                 <TouchableOpacity
@@ -89,7 +89,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       borderColor: theme.colors.border,
                       borderRadius: theme.cardRadius,
                       opacity: isExploding ? 0.25 : 1,
-                      transform: [{ scale: isExploding ? 0.92 : 1 }],
+                      transform: [{ scale: isExploding ? 0.94 : 1 }],
                     },
                   ]}
                   activeOpacity={0.7}
@@ -146,6 +146,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                           e.stopPropagation?.();
                           triggerHaptic('heavy');
                           setExplodingId(tx.id);
+                          setTimeout(() => {
+                            onDeleteTransaction?.(tx.id);
+                          }, 50);
                         }}
                         style={styles.deleteBtn}
                         activeOpacity={0.6}
@@ -160,7 +163,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   <ParticleBurst
                     color={isIncome ? theme.colors.incomeText : theme.colors.expenseText}
                     onComplete={() => {
-                      onDeleteTransaction?.(tx.id);
                       setExplodingId(null);
                     }}
                   />

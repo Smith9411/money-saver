@@ -81,29 +81,41 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* En-tête */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={THEME.colors.textPrimary} />
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.backBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Historique complet</Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Historique complet</Text>
           <View style={{ width: 40 }} />
         </View>
 
         {/* Barre de recherche animée */}
-        <View style={styles.searchWrapper}>
-          <Ionicons name="search" size={16} color={THEME.colors.textSecondary} style={{ marginRight: 8 }} />
+        <View
+          style={[
+            styles.searchWrapper,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Ionicons name="search" size={16} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.colors.textPrimary }]}
             placeholder="Rechercher une dépense, un magasin..."
-            placeholderTextColor={THEME.colors.textMuted}
+            placeholderTextColor={theme.colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={16} color={THEME.colors.textMuted} />
+              <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -119,14 +131,32 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
             return (
               <TouchableOpacity
                 key={f.value}
-                style={[styles.filterPill, isSelected && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: isSelected ? theme.colors.accent : theme.colors.surface,
+                    borderColor: isSelected ? theme.colors.accent : theme.colors.border,
+                  },
+                ]}
                 activeOpacity={0.7}
                 onPress={() => {
                   triggerHaptic('selection');
                   setSelectedCat(f.value);
                 }}
               >
-                <Text style={[styles.filterPillText, isSelected && styles.filterPillTextActive]}>
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    {
+                      color: isSelected
+                        ? theme.isDark && theme.id === 'midnight-titanium'
+                          ? '#000000'
+                          : '#FFFFFF'
+                        : theme.colors.textSecondary,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                >
                   {f.label}
                 </Text>
               </TouchableOpacity>
@@ -135,14 +165,18 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
         </ScrollView>
 
         {/* Résumé des résultats filtrés */}
-        <View style={styles.summaryBar}>
-          <Text style={styles.summaryCount}>
+        <View style={[styles.summaryBar, { borderBottomColor: theme.colors.borderLight }]}>
+          <Text style={[styles.summaryCount, { color: theme.colors.textSecondary }]}>
             {filtered.length} transaction{filtered.length > 1 ? 's' : ''}
           </Text>
           <View style={styles.summaryAmounts}>
-            <Text style={styles.summaryExpense}>-{totalFiltered.expenses.toFixed(2)} €</Text>
+            <Text style={[styles.summaryExpense, { color: theme.colors.textPrimary }]}>
+              -{totalFiltered.expenses.toFixed(2)} €
+            </Text>
             {totalFiltered.incomes > 0 && (
-              <Text style={styles.summaryIncome}>+{totalFiltered.incomes.toFixed(2)} €</Text>
+              <Text style={[styles.summaryIncome, { color: theme.colors.incomeText }]}>
+                +{totalFiltered.incomes.toFixed(2)} €
+              </Text>
             )}
           </View>
         </View>
@@ -151,9 +185,13 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
         <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
           {filtered.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={42} color={THEME.colors.textMuted} />
-              <Text style={styles.emptyText}>Aucune transaction trouvée</Text>
-              <Text style={styles.emptySubText}>Essayez un autre mot-clé ou filtre</Text>
+              <Ionicons name="search-outline" size={42} color={theme.colors.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.colors.textPrimary }]}>
+                Aucune transaction trouvée
+              </Text>
+              <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>
+                Essayez un autre mot-clé ou filtre
+              </Text>
             </View>
           ) : (
             filtered.map((tx, idx) => {
@@ -164,9 +202,9 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
               return (
                 <Animated.View
                   key={tx.id}
-                  entering={FadeInDown.duration(360).springify().damping(15).delay(Math.min(idx * 20, 140))}
-                  exiting={FadeOutUp.duration(280)}
-                  layout={LinearTransition.springify().damping(16).stiffness(130)}
+                  entering={FadeInDown.duration(200).springify().damping(22).delay(Math.min(idx * 20, 100))}
+                  exiting={FadeOutUp.duration(160)}
+                  layout={LinearTransition.springify().damping(18).stiffness(140)}
                   style={{ position: 'relative' }}
                 >
                   <TouchableOpacity
@@ -177,7 +215,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                         borderColor: theme.colors.border,
                         borderRadius: theme.cardRadius,
                         opacity: isExploding ? 0.25 : 1,
-                        transform: [{ scale: isExploding ? 0.92 : 1 }],
+                        transform: [{ scale: isExploding ? 0.94 : 1 }],
                       },
                     ]}
                     activeOpacity={0.7}
@@ -241,6 +279,9 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                           e.stopPropagation?.();
                           triggerHaptic('heavy');
                           setExplodingId(tx.id);
+                          setTimeout(() => {
+                            onDeleteTransaction(tx.id);
+                          }, 50);
                         }}
                       >
                         <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
@@ -252,7 +293,6 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                     <ParticleBurst
                       color={isIncome ? theme.colors.incomeText : theme.colors.expenseText}
                       onComplete={() => {
-                        onDeleteTransaction(tx.id);
                         setExplodingId(null);
                       }}
                     />

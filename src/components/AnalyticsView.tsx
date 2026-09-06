@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { THEME } from '../constants/theme';
 import { PeriodStats, TimePeriod, CategoryBudget } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 interface AnalyticsViewProps {
   stats: PeriodStats;
@@ -19,34 +20,66 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   budgets,
   onBack,
 }) => {
+  const { theme } = useTheme();
+
   const formatEuro = (n: number) => {
     return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* En-tête */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={20} color={THEME.colors.textPrimary} />
+        <TouchableOpacity
+          onPress={onBack}
+          style={[styles.backBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Rapports & Flux</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Rapports & Flux</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {/* Sélecteur temporel à 3 segments */}
-      <View style={styles.periodSelector}>
+      <View
+        style={[
+          styles.periodSelector,
+          {
+            backgroundColor: theme.colors.surfaceSubtle,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
         {(['week', 'month', 'year'] as TimePeriod[]).map((p) => {
           const isSelected = period === p;
           const label = p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année';
           return (
             <TouchableOpacity
               key={p}
-              style={[styles.segmentBtn, isSelected && styles.segmentBtnActive]}
+              style={[
+                styles.segmentBtn,
+                isSelected && [styles.segmentBtnActive, { backgroundColor: theme.colors.accent }],
+              ]}
               activeOpacity={0.7}
               onPress={() => onPeriodChange(p)}
             >
-              <Text style={[styles.segmentText, isSelected && styles.segmentTextActive]}>
+              <Text
+                style={[
+                  styles.segmentText,
+                  {
+                    color: isSelected
+                      ? theme.isDark && theme.id === 'midnight-titanium'
+                        ? '#000000'
+                        : '#FFFFFF'
+                      : theme.colors.textSecondary,
+                    fontWeight: isSelected ? '700' : '500',
+                  },
+                ]}
+              >
                 {label}
               </Text>
             </TouchableOpacity>
@@ -55,12 +88,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       </View>
 
       {/* Carte Résumé du Solde Net */}
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Solde net sur la période</Text>
+      <View
+        style={[
+          styles.balanceCard,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderRadius: theme.cardRadius,
+          },
+        ]}
+      >
+        <Text style={[styles.balanceLabel, { color: theme.colors.textSecondary }]}>Solde net sur la période</Text>
         <Text
           style={[
             styles.balanceAmount,
-            stats.netBalance >= 0 ? styles.balancePositive : styles.balanceNegative,
+            { color: stats.netBalance >= 0 ? theme.colors.incomeText : theme.colors.expenseText },
           ]}
         >
           {stats.netBalance >= 0 ? '+' : ''}
@@ -70,40 +112,72 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* Deux colonnes : Entrées vs Sorties */}
       <View style={styles.flowRow}>
-        <View style={styles.flowCard}>
-          <View style={styles.flowIconIncome}>
-            <Ionicons name="arrow-down" size={16} color={THEME.colors.incomeText} />
+        <View
+          style={[
+            styles.flowCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              borderRadius: theme.cardRadius,
+            },
+          ]}
+        >
+          <View style={[styles.flowIconIncome, { backgroundColor: theme.colors.incomeBg }]}>
+            <Ionicons name="arrow-down" size={16} color={theme.colors.incomeText} />
           </View>
-          <Text style={styles.flowLabel}>Total Entrées</Text>
-          <Text style={styles.flowIncomeAmount}>+{formatEuro(stats.totalIncome)}</Text>
+          <Text style={[styles.flowLabel, { color: theme.colors.textSecondary }]}>Total Entrées</Text>
+          <Text style={[styles.flowIncomeAmount, { color: theme.colors.incomeText }]}>
+            +{formatEuro(stats.totalIncome)}
+          </Text>
         </View>
 
-        <View style={styles.flowCard}>
-          <View style={styles.flowIconExpense}>
-            <Ionicons name="arrow-up" size={16} color={THEME.colors.textPrimary} />
+        <View
+          style={[
+            styles.flowCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              borderRadius: theme.cardRadius,
+            },
+          ]}
+        >
+          <View style={[styles.flowIconExpense, { backgroundColor: theme.colors.surfaceSubtle }]}>
+            <Ionicons name="arrow-up" size={16} color={theme.colors.expenseText} />
           </View>
-          <Text style={styles.flowLabel}>Total Sorties</Text>
-          <Text style={styles.flowExpenseAmount}>-{formatEuro(stats.totalExpense)}</Text>
+          <Text style={[styles.flowLabel, { color: theme.colors.textSecondary }]}>Total Sorties</Text>
+          <Text style={[styles.flowExpenseAmount, { color: theme.colors.textPrimary }]}>
+            -{formatEuro(stats.totalExpense)}
+          </Text>
         </View>
       </View>
 
       {/* Répartition des dépenses par catégorie */}
-      <View style={styles.breakdownSection}>
-        <Text style={styles.sectionTitle}>Répartition des dépenses</Text>
+      <View
+        style={[
+          styles.breakdownSection,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderRadius: theme.cardRadius,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Répartition des dépenses</Text>
 
         <View style={styles.categoriesList}>
           {budgets.map((b) => (
             <View key={b.category} style={styles.catItem}>
               <View style={styles.catHeader}>
-                <Text style={styles.catName}>{b.name}</Text>
-                <Text style={styles.catAmount}>{b.spent} €</Text>
+                <Text style={[styles.catName, { color: theme.colors.textPrimary }]}>{b.name}</Text>
+                <Text style={[styles.catAmount, { color: theme.colors.textSecondary }]}>{b.spent} €</Text>
               </View>
-              <View style={styles.progressTrack}>
+              <View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceMuted }]}>
                 <View
                   style={[
                     styles.progressFill,
                     {
                       width: `${Math.min(100, (b.spent / Math.max(1, stats.totalExpense)) * 100)}%`,
+                      backgroundColor: theme.colors.accent,
                     },
                   ]}
                 />

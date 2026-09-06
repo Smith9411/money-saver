@@ -81,34 +81,75 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* En-tête */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={20} color={THEME.colors.textPrimary} />
+        <TouchableOpacity
+          onPress={onBack}
+          style={[styles.backBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profil & Paramètres</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Profil & Paramètres</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {/* Carte utilisateur minimaliste personnalisable */}
-      <View style={styles.userCard}>
-        <View style={styles.avatarLarge}>
-          <Ionicons name="person" size={32} color="#FFFFFF" />
+      <View
+        style={[
+          styles.userCard,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderRadius: theme.cardRadius,
+          },
+        ]}
+      >
+        <View style={[styles.avatarLarge, { backgroundColor: theme.colors.accent }]}>
+          <Ionicons
+            name="person"
+            size={32}
+            color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+          />
         </View>
 
         {isEditingName ? (
           <View style={styles.nameEditBox}>
             <TextInput
-              style={styles.nameInput}
+              style={[
+                styles.nameInput,
+                {
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.accent,
+                  color: theme.colors.textPrimary,
+                },
+              ]}
               value={nameInput}
               onChangeText={setNameInput}
               placeholder="Entrez votre prénom..."
-              placeholderTextColor={THEME.colors.textMuted}
+              placeholderTextColor={theme.colors.textMuted}
               autoFocus
             />
-            <TouchableOpacity style={styles.saveNameBtn} onPress={handleSaveName}>
-              <Text style={styles.saveNameBtnText}>Valider</Text>
+            <TouchableOpacity
+              style={[styles.saveNameBtn, { backgroundColor: theme.colors.accent }]}
+              onPress={handleSaveName}
+            >
+              <Text
+                style={[
+                  styles.saveNameBtnText,
+                  {
+                    color: theme.isDark && theme.id === 'midnight-titanium'
+                      ? '#000000'
+                      : '#FFFFFF',
+                  },
+                ]}
+              >
+                Valider
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -117,18 +158,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             activeOpacity={0.7}
             onPress={() => setIsEditingName(true)}
           >
-            <Text style={styles.userName}>
+            <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>
               {userName && userName.trim().length > 0 ? userName : 'Définir mon prénom'}
             </Text>
-            <Ionicons name="pencil-outline" size={16} color={THEME.colors.textSecondary} style={{ marginLeft: 6 }} />
+            <Ionicons name="pencil-outline" size={16} color={theme.colors.textSecondary} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
         )}
 
-        <Text style={styles.userSub}>Données stockées localement sur cet appareil</Text>
+        <Text style={[styles.userSub, { color: theme.colors.textSecondary }]}>Données stockées localement sur cet appareil</Text>
 
-        <View style={styles.badgeLocal}>
+        <View style={[styles.badgeLocal, { backgroundColor: theme.colors.surfaceSubtle }]}>
           <Ionicons name="shield-checkmark-outline" size={14} color="#15803D" />
-          <Text style={styles.badgeLocalText}>100% Hors-ligne & Privé</Text>
+          <Text style={[styles.badgeLocalText, { color: theme.colors.textPrimary }]}>100% Hors-ligne & Privé</Text>
         </View>
       </View>
 
@@ -338,22 +379,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </View>
 
       {/* Section IA Vision pour les tickets */}
-      <View style={styles.sectionCard}>
+      <View
+        style={[
+          styles.sectionCard,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderRadius: theme.cardRadius,
+          },
+        ]}
+      >
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionIcon}>
-            <Ionicons name="sparkles" size={18} color="#111111" />
+          <View style={[styles.sectionIcon, { backgroundColor: theme.colors.surfaceSubtle }]}>
+            <Ionicons name="sparkles" size={18} color={theme.colors.textPrimary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>IA Scanner de tickets</Text>
-            <Text style={styles.sectionDesc}>Google Gemini Vision</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>IA Scanner de tickets</Text>
+            <Text style={[styles.sectionDesc, { color: theme.colors.textSecondary }]}>Google Gemini Vision</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>Clé d'API Google AI Studio</Text>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Clé d'API Google AI Studio</Text>
         <TextInput
-          style={styles.keyInput}
+          style={[
+            styles.keyInput,
+            {
+              backgroundColor: theme.colors.surfaceSubtle,
+              borderColor: theme.colors.border,
+              color: theme.colors.textPrimary,
+            },
+          ]}
           placeholder="Ex: AIzaSyD... (Collez votre clé ici)"
-          placeholderTextColor={THEME.colors.textMuted}
+          placeholderTextColor={theme.colors.textMuted}
           value={apiKeyInput}
           onChangeText={setApiKeyInput}
           autoCapitalize="none"
@@ -362,46 +419,71 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         />
 
         <TouchableOpacity
-          style={styles.saveBtn}
+          style={[styles.saveBtn, { backgroundColor: theme.colors.accent }]}
           activeOpacity={0.85}
           onPress={handleSaveKey}
         >
-          <Text style={styles.saveBtnText}>
+          <Text
+            style={[
+              styles.saveBtnText,
+              {
+                color: theme.isDark && theme.id === 'midnight-titanium'
+                  ? '#000000'
+                  : '#FFFFFF',
+              },
+            ]}
+          >
             {isSaved ? '✓ Clé enregistrée' : 'Enregistrer la clé'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Statistiques de stockage local */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Stockage local</Text>
+      <View
+        style={[
+          styles.sectionCard,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border,
+            borderRadius: theme.cardRadius,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Stockage local</Text>
         <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Transactions enregistrées</Text>
-          <Text style={styles.statValue}>{transactionsCount}</Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Transactions enregistrées</Text>
+          <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{transactionsCount}</Text>
         </View>
         <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Base de données</Text>
-          <Text style={styles.statValue}>SQLite (money_saver.db)</Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Base de données</Text>
+          <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>SQLite (money_saver.db)</Text>
         </View>
         <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Devise active</Text>
-          <Text style={styles.statValue}>Euro (€)</Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Devise active</Text>
+          <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>Euro (€)</Text>
         </View>
       </View>
 
       {/* Bouton de remise à zéro complète de l'application */}
       <View style={styles.dangerSection}>
         <TouchableOpacity
-          style={styles.resetAppBtn}
+          style={[
+            styles.resetAppBtn,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              borderRadius: theme.cardRadius,
+            },
+          ]}
           activeOpacity={0.8}
           onPress={handleConfirmReset}
         >
-          <Ionicons name="refresh-outline" size={18} color={THEME.colors.expenseText} />
-          <Text style={styles.resetAppBtnText}>
+          <Ionicons name="refresh-outline" size={18} color={theme.colors.expenseText} />
+          <Text style={[styles.resetAppBtnText, { color: theme.colors.expenseText }]}>
             Remettre l’application à zéro (tout effacer)
           </Text>
         </TouchableOpacity>
-        <Text style={styles.resetHint}>
+        <Text style={[styles.resetHint, { color: theme.colors.textMuted }]}>
           Efface toutes les transactions pour repartir d'une installation vierge.
         </Text>
       </View>

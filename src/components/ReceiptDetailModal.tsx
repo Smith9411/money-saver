@@ -11,6 +11,7 @@ import { THEME } from '../constants/theme';
 import { Transaction } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerHaptic } from '../services/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 interface ReceiptDetailModalProps {
   transaction: Transaction | null;
@@ -25,6 +26,7 @@ export const ReceiptDetailModal: React.FC<ReceiptDetailModalProps> = ({
   onClose,
   onDelete,
 }) => {
+  const { theme } = useTheme();
   if (!transaction) return null;
 
   const items = transaction.items || [];
@@ -49,57 +51,67 @@ export const ReceiptDetailModal: React.FC<ReceiptDetailModalProps> = ({
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
-        <View style={styles.sheetCard}>
+        <View
+          style={[
+            styles.sheetCard,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+              borderLeftColor: theme.colors.border,
+              borderRightColor: theme.colors.border,
+            },
+          ]}
+        >
           {/* Poignée de drag */}
-          <View style={styles.dragHandle} />
+          <View style={[styles.dragHandle, { backgroundColor: theme.colors.border }]} />
 
           {/* En-tête */}
           <View style={styles.headerRow}>
-            <View style={styles.badgeScan}>
-              <Ionicons name="receipt-outline" size={14} color="#111111" />
-              <Text style={styles.badgeScanText}>
+            <View style={[styles.badgeScan, { backgroundColor: theme.colors.surfaceSubtle }]}>
+              <Ionicons name="receipt-outline" size={14} color={theme.colors.textPrimary} />
+              <Text style={[styles.badgeScanText, { color: theme.colors.textPrimary }]}>
                 {hasItems ? 'Ticket de caisse scanné' : 'Détail de la dépense'}
               </Text>
             </View>
 
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={THEME.colors.textPrimary} />
+            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.colors.surfaceSubtle }]}>
+              <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {/* Commerce et date */}
           <View style={styles.merchantSection}>
-            <Text style={styles.merchantName}>{transaction.title}</Text>
-            <Text style={styles.receiptDate}>{formatDate(transaction.date)}</Text>
-            <Text style={styles.totalBig}>-{transaction.amount.toFixed(2)} €</Text>
+            <Text style={[styles.merchantName, { color: theme.colors.textPrimary }]}>{transaction.title}</Text>
+            <Text style={[styles.receiptDate, { color: theme.colors.textSecondary }]}>{formatDate(transaction.date)}</Text>
+            <Text style={[styles.totalBig, { color: theme.colors.textPrimary }]}>-{transaction.amount.toFixed(2)} €</Text>
           </View>
 
           {/* Ligne pointillée décorative style reçu */}
-          <View style={styles.dashedDivider} />
+          <View style={[styles.dashedDivider, { borderColor: theme.colors.borderLight }]} />
 
           <ScrollView style={styles.itemsScroll} showsVerticalScrollIndicator={false}>
             {hasItems ? (
               <View style={styles.itemsList}>
-                <Text style={styles.itemsSectionTitle}>
+                <Text style={[styles.itemsSectionTitle, { color: theme.colors.textPrimary }]}>
                   Articles détaillés ({items.length})
                 </Text>
 
                 {items.map((item, index) => (
                   <View key={item.id || `it-${index}`}>
                     <View style={styles.itemRow}>
-                      <View style={styles.itemBullet} />
-                      <Text style={styles.itemName} numberOfLines={2}>
+                      <View style={[styles.itemBullet, { backgroundColor: theme.colors.accent }]} />
+                      <Text style={[styles.itemName, { color: theme.colors.textPrimary }]} numberOfLines={2}>
                         {item.name}
                       </Text>
-                      <Text style={styles.itemPrice}>{item.price.toFixed(2)} €</Text>
+                      <Text style={[styles.itemPrice, { color: theme.colors.textPrimary }]}>{item.price.toFixed(2)} €</Text>
                     </View>
-                    {index < items.length - 1 && <View style={styles.itemBorder} />}
+                    {index < items.length - 1 && <View style={[styles.itemBorder, { backgroundColor: theme.colors.borderLight }]} />}
                   </View>
                 ))}
               </View>
             ) : (
               <View style={styles.noItemsBox}>
-                <Text style={styles.noItemsText}>
+                <Text style={[styles.noItemsText, { color: theme.colors.textSecondary }]}>
                   Cette dépense a été ajoutée manuellement sans détail d'articles.
                 </Text>
               </View>
@@ -107,9 +119,9 @@ export const ReceiptDetailModal: React.FC<ReceiptDetailModalProps> = ({
 
             {/* Note éventuelle */}
             {transaction.note && (
-              <View style={styles.noteBox}>
-                <Text style={styles.noteLabel}>Note :</Text>
-                <Text style={styles.noteText}>{transaction.note}</Text>
+              <View style={[styles.noteBox, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                <Text style={[styles.noteLabel, { color: theme.colors.textSecondary }]}>Note :</Text>
+                <Text style={[styles.noteText, { color: theme.colors.textPrimary }]}>{transaction.note}</Text>
               </View>
             )}
 
@@ -120,7 +132,7 @@ export const ReceiptDetailModal: React.FC<ReceiptDetailModalProps> = ({
           <View style={styles.footer}>
             {onDelete && (
               <TouchableOpacity
-                style={styles.deleteButton}
+                style={[styles.deleteButton, { backgroundColor: theme.colors.surfaceSubtle }]}
                 activeOpacity={0.7}
                 onPress={() => {
                   triggerHaptic('medium');
@@ -128,8 +140,8 @@ export const ReceiptDetailModal: React.FC<ReceiptDetailModalProps> = ({
                   onClose();
                 }}
               >
-                <Ionicons name="trash-outline" size={16} color={THEME.colors.expenseText} />
-                <Text style={styles.deleteButtonText}>Supprimer cette dépense</Text>
+                <Ionicons name="trash-outline" size={16} color={theme.colors.expenseText} />
+                <Text style={[styles.deleteButtonText, { color: theme.colors.expenseText }]}>Supprimer cette dépense</Text>
               </TouchableOpacity>
             )}
           </View>

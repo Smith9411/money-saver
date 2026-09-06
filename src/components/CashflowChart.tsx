@@ -210,8 +210,24 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
             ]}
           >
             <View style={[styles.badgeContent, { backgroundColor: theme.colors.accent }]}>
-              <Ionicons name="arrow-up" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
-              <Text style={styles.badgeText}>{activePoint.amount.toFixed(2)} €</Text>
+              <Ionicons
+                name="arrow-up"
+                size={10}
+                color={theme.isDark && theme.id === 'midnight-titanium' ? '#000000' : '#FFFFFF'}
+                style={{ marginRight: 3 }}
+              />
+              <Text
+                style={[
+                  styles.badgeText,
+                  {
+                    color: theme.isDark && theme.id === 'midnight-titanium'
+                      ? '#000000'
+                      : '#FFFFFF',
+                  },
+                ]}
+              >
+                {activePoint.amount.toFixed(2)} €
+              </Text>
             </View>
             <View style={[styles.badgeArrow, { borderTopColor: theme.colors.accent }]} />
           </Animated.View>
@@ -233,7 +249,7 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
               y1={15}
               x2={pt.x}
               y2={CHART_HEIGHT - 10}
-              stroke={i === selectedIndex ? '#111111' : '#E5E5EA'}
+              stroke={i === selectedIndex ? theme.colors.textPrimary : theme.colors.border}
               strokeWidth={i === selectedIndex ? 1.2 : 0.8}
               strokeDasharray={i === selectedIndex ? '4 3' : '3 4'}
               opacity={i === selectedIndex ? 0.8 : 0.5}
@@ -253,14 +269,14 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
             strokeLinejoin="round"
           />
 
-          {/* Point actif avec anneau blanc */}
+          {/* Point actif avec anneau stylisé */}
           {activePoint && (
             <>
               <Circle
                 cx={activePoint.x}
                 cy={activePoint.y}
                 r={6}
-                fill="#FFFFFF"
+                fill={theme.colors.surface}
                 stroke={theme.colors.accent}
                 strokeWidth={2.4}
               />
@@ -287,7 +303,8 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
               <Text
                 style={[
                   styles.labelText,
-                  index === selectedIndex && styles.labelActiveText,
+                  { color: theme.colors.textMuted },
+                  index === selectedIndex && [styles.labelActiveText, { color: theme.colors.textPrimary }],
                 ]}
               >
                 {pt.label}
