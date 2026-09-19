@@ -23,6 +23,19 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="manifest" href="/manifest.json" />
 
         <ScrollViewStyleReset />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              input, textarea, button, select {
+                outline: none !important;
+                -webkit-tap-highlight-color: transparent;
+              }
+              *:focus {
+                outline: none !important;
+              }
+            `,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

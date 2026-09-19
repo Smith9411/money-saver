@@ -70,23 +70,38 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) =>
           <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>
             Comment vous appelez-vous ?
           </Text>
+          
+          {/* Champ de saisie sans carré noir, avec icône d'écriture */}
           <View
             style={[
               styles.inputContainer,
               {
-                backgroundColor: theme.colors.surface,
-                borderColor: error ? theme.colors.expenseText : theme.colors.border,
+                backgroundColor: theme.colors.surfaceSubtle || theme.colors.surface,
+                borderBottomWidth: 1.5,
+                borderBottomColor: error
+                  ? theme.colors.expenseText
+                  : theme.colors.accent,
               },
             ]}
           >
+            {/* Petite icône d'écriture */}
             <Ionicons
-              name="person-outline"
+              name="pencil-outline"
               size={18}
-              color={theme.colors.textMuted}
-              style={{ marginRight: 10 }}
+              color={theme.colors.accent}
+              style={{ marginRight: 12 }}
             />
             <TextInput
-              style={[styles.textInput, { color: theme.colors.textPrimary }]}
+              style={[
+                styles.textInput,
+                {
+                  color: theme.colors.textPrimary,
+                  // @ts-ignore
+                  outlineStyle: 'none',
+                  outlineWidth: 0,
+                  outlineColor: 'transparent',
+                },
+              ]}
               placeholder="Votre prénom (ex: Thomas, Sarah...)"
               placeholderTextColor={theme.colors.textMuted}
               value={name}
@@ -207,21 +222,23 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: THEME.radius.md,
     paddingHorizontal: 16,
-    borderWidth: 1.5,
-    ...THEME.shadows.subtle,
+    paddingVertical: 4,
+    width: '100%',
+    borderWidth: 0,
   },
   textInput: {
     flex: 1,
-    paddingVertical: 16,
-    fontSize: 16,
+    paddingVertical: 14,
+    fontSize: 17,
     fontWeight: '600',
+    borderWidth: 0,
   },
   clearBtn: {
     padding: 4,
