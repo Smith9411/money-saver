@@ -34,6 +34,46 @@ export default function Root({ children }: PropsWithChildren) {
                 src: url('/fonts/Ionicons.ttf') format('truetype');
                 font-display: block;
               }
+
+              /* Plein écran iOS Safari & PWA sans bande blanche vers le bas */
+              html {
+                background-color: #0B0B0E !important;
+                height: 100% !important;
+                height: 100dvh !important;
+                height: -webkit-fill-available !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-text-size-adjust: 100% !important;
+              }
+
+              body {
+                background-color: #0B0B0E !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 100% !important;
+                min-height: 100dvh !important;
+                min-height: -webkit-fill-available !important;
+                overflow: hidden !important;
+                overscroll-behavior-y: none !important;
+                -webkit-overflow-scrolling: touch !important;
+                -webkit-font-smoothing: antialiased !important;
+              }
+
+              #root {
+                background-color: #0B0B0E !important;
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 100% !important;
+                min-height: 100dvh !important;
+                min-height: -webkit-fill-available !important;
+                display: flex !important;
+                flex-direction: column !important;
+                flex: 1 1 100% !important;
+              }
+
               input, textarea, button, select {
                 outline: none !important;
                 -webkit-tap-highlight-color: transparent;

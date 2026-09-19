@@ -30,6 +30,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTheme();
   }, []);
 
+  // Synchronisation dynamique de la couleur de fond du document web / iOS
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const active = THEMES[themeId] || THEMES['pure-paper'];
+      const bg = active.colors.background;
+      document.documentElement.style.backgroundColor = bg;
+      document.body.style.backgroundColor = bg;
+      const root = document.getElementById('root');
+      if (root) {
+        root.style.backgroundColor = bg;
+      }
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', bg);
+      }
+    }
+  }, [themeId]);
+
   const changeTheme = (newId: ThemeId) => {
     if (THEMES[newId]) {
       triggerHaptic('medium');

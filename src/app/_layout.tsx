@@ -3,12 +3,34 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ThemeProvider } from '../context/ThemeContext';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
 // Empêche la fermeture prématurée du splash screen tant que les polices ne sont pas prêtes
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function RootNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
+      <SafeAreaProvider style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: {
+              backgroundColor: theme.colors.background,
+              flex: 1,
+            },
+          }}
+        />
+      </SafeAreaProvider>
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -30,14 +52,20 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
-      </SafeAreaProvider>
+      <RootNavigator />
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    height: '100%',
+    width: '100%',
+  },
+  container: {
+    flex: 1,
+    height: '100%',
+    width: '100%',
+  },
+});

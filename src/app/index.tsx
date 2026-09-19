@@ -227,6 +227,7 @@ export default function Index() {
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
             contentContainerStyle={styles.scrollContent}
             refreshControl={
               <RefreshControl
@@ -340,9 +341,13 @@ export default function Index() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    height: '100%',
+    width: '100%',
   },
   container: {
     flex: 1,
+    height: '100%',
+    width: '100%',
     position: 'relative',
   },
   scrollContent: {
