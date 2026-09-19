@@ -22,10 +22,18 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
 
+        {/* Préchargement ultra-rapide de la police d'icônes Ionicons pour éviter tout rectangle manquant */}
+        <link rel="preload" href="/fonts/Ionicons.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+
         <ScrollViewStyleReset />
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              @font-face {
+                font-family: 'Ionicons';
+                src: url('/fonts/Ionicons.ttf') format('truetype');
+                font-display: block;
+              }
               input, textarea, button, select {
                 outline: none !important;
                 -webkit-tap-highlight-color: transparent;
