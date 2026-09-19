@@ -8,9 +8,11 @@
     "scheme": "budget",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.budget.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.budget.app",
       "adaptiveIcon": {
         "backgroundColor": "#0C0C0F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
