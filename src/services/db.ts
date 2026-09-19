@@ -7,14 +7,40 @@ import {
   UpcomingPayment,
 } from '../types';
 
+// Utilitaires de stockage persistant pour le Web (localStorage)
+function getLocalItem(key: string): string | null {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function setLocalItem(key: string, value: string): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {}
+  }
+}
+
+function removeLocalItem(key: string): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {}
+  }
+}
+
 let dbInstance: any = null;
 let isInitializing = false;
 
-// Mémoire de secours en cas d'indisponibilité SQLite (commence vide pour une app propre)
+// Mémoire de secours (commence 100% vide pour une nouvelle installation)
 let memoryTransactions: Transaction[] = [];
-const memorySettings: Record<string, string> = {
-  user_name: 'Alexandre',
-};
+const memorySettings: Record<string, string> = {};
 
 export async function initDatabase(): Promise<void> {
   if (dbInstance) {
@@ -24,6 +50,18 @@ export async function initDatabase(): Promise<void> {
     return;
   }
   isInitializing = true;
+
+  // Charger immédiatement la sauvegarde locale Web si existante
+  const storedTxs = getLocalItem('budget_transactions');
+  if (storedTxs) {
+    try {
+      const parsed = JSON.parse(storedTxs);
+      if (Array.isArray(parsed)) {
+        memoryTransactions = parsed;
+      }
+    } catch {}
+  }
+
   try {
     if (typeof SQLite.openDatabaseSync === 'function') {
       dbInstance = SQLite.openDatabaseSync('money_saver.db');
@@ -65,12 +103,19 @@ export async function initDatabase(): Promise<void> {
       } catch {}
     }
   } catch (error) {
-    console.warn('SQLite init warning (using memory storage fallback):', error);
+    console.warn('SQLite init warning (using persistent memory storage fallback):', error);
   }
 }
 
-// Gestion des réglages (ex: nom d'utilisateur)
+// Gestion des réglages (ex: nom d'utilisateur, plafonds de budget)
 export async function getSetting(key: string, defaultValue = ''): Promise<string> {
+  // 1. Vérifier le stockage Web (localStorage) en priorité pour la réactivité
+  const localVal = getLocalItem(`setting_${key}`);
+  if (localVal !== null && localVal !== undefined) {
+    return localVal;
+  }
+
+  // 2. Vérifier SQLite
   try {
     if (dbInstance) {
       const row: any = dbInstance.getFirstSync(
@@ -78,17 +123,22 @@ export async function getSetting(key: string, defaultValue = ''): Promise<string
         [key]
       );
       if (row && row.value !== undefined) {
+        setLocalItem(`setting_${key}`, row.value);
         return row.value;
       }
     }
   } catch (e) {
     console.warn('Error reading setting from SQLite:', e);
   }
+
+  // 3. Fallback mémoire
   return memorySettings[key] !== undefined ? memorySettings[key] : defaultValue;
 }
 
 export async function setSetting(key: string, value: string): Promise<void> {
   memorySettings[key] = value;
+  setLocalItem(`setting_${key}`, value);
+
   try {
     if (dbInstance) {
       dbInstance.runSync(
@@ -106,11 +156,27 @@ export async function resetAllData(): Promise<void> {
   try {
     if (dbInstance) {
       dbInstance.execSync('DELETE FROM transactions;');
+      dbInstance.execSync('DELETE FROM settings;');
     }
   } catch (e) {
     console.warn('Error resetting transactions in SQLite:', e);
   }
+
   memoryTransactions = [];
+  for (const k in memorySettings) {
+    delete memorySettings[k];
+  }
+
+  // Nettoyage complet du stockage Web
+  removeLocalItem('budget_transactions');
+  removeLocalItem('setting_user_name');
+  removeLocalItem('setting_user_avatar');
+  removeLocalItem('setting_budget_food');
+  removeLocalItem('setting_budget_housing');
+  removeLocalItem('setting_budget_transport');
+  removeLocalItem('setting_budget_shopping');
+  removeLocalItem('setting_budget_leisure');
+  removeLocalItem('setting_budget_education');
 }
 
 export async function getTransactions(): Promise<Transaction[]> {
@@ -119,23 +185,41 @@ export async function getTransactions(): Promise<Transaction[]> {
       const rows: any[] = dbInstance.getAllSync(
         'SELECT * FROM transactions ORDER BY date DESC, id DESC;'
       );
-      return rows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        amount: row.amount,
-        type: row.type,
-        category: row.category,
-        date: row.date,
-        merchant: row.merchant,
-        note: row.note,
-        items: row.items ? (typeof row.items === 'string' ? JSON.parse(row.items) : row.items) : undefined,
-        isRecurring: Boolean(row.is_recurring),
-        recurringDay: row.recurring_day || undefined,
-      }));
+      if (rows && rows.length > 0) {
+        const mapped = rows.map((row) => ({
+          id: row.id,
+          title: row.title,
+          amount: row.amount,
+          type: row.type,
+          category: row.category,
+          date: row.date,
+          merchant: row.merchant,
+          note: row.note,
+          items: row.items ? (typeof row.items === 'string' ? JSON.parse(row.items) : row.items) : undefined,
+          isRecurring: Boolean(row.is_recurring),
+          recurringDay: row.recurring_day || undefined,
+        }));
+        memoryTransactions = mapped;
+        setLocalItem('budget_transactions', JSON.stringify(mapped));
+        return mapped;
+      }
     }
   } catch (e) {
-    console.warn('Error reading from SQLite, using memory fallback:', e);
+    console.warn('Error reading from SQLite, using memory/local fallback:', e);
   }
+
+  // Fallback localStorage (pour le Web)
+  const stored = getLocalItem('budget_transactions');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        memoryTransactions = parsed;
+        return parsed;
+      }
+    } catch {}
+  }
+
   return [...memoryTransactions].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -174,6 +258,7 @@ export async function addTransaction(
   }
 
   memoryTransactions.unshift(newTx);
+  setLocalItem('budget_transactions', JSON.stringify(memoryTransactions));
   return newTx;
 }
 
@@ -188,6 +273,7 @@ export async function deleteTransaction(id: string): Promise<void> {
     console.warn('Error deleting from SQLite:', e);
   }
   memoryTransactions = memoryTransactions.filter((tx) => tx.id !== id);
+  setLocalItem('budget_transactions', JSON.stringify(memoryTransactions));
 }
 
 export function computeStats(transactions: Transaction[], period: TimePeriod): PeriodStats {
