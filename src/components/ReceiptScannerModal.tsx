@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Animated, {
@@ -28,6 +29,7 @@ import { parseReceiptImage } from '../services/receiptParser';
 import { parseReceiptWithAI, getApiKey, setApiKey } from '../services/aiReceiptScanner';
 import { triggerHaptic } from '../services/haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '../context/ThemeContext';
 
 interface ReceiptScannerModalProps {
   visible: boolean;
@@ -46,10 +48,12 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
   onClose,
   onSaveReceipt,
 }) => {
+  const { theme } = useTheme();
   const [step, setStep] = useState<'capture' | 'preview'>('capture');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [parsedData, setParsedData] = useState<ParsedReceipt | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
@@ -145,14 +149,18 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
 
     if (cameraRef.current && permission?.granted) {
       try {
-        setIsAnalyzing(true);
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.7,
+          quality: 0.75,
           base64: true,
         });
-        if (photo && photo.base64) {
-          processImage(photo.base64, photo.uri);
-          return;
+        if (photo) {
+          // Geler immédiatement la photo dans le cadre pour montrer la prise de vue
+          setCapturedPhotoUri(photo.uri);
+          setIsAnalyzing(true);
+          if (photo.base64) {
+            processImage(photo.base64, photo.uri);
+            return;
+          }
         }
       } catch (e) {
         console.warn('Integrated camera capture error:', e);
@@ -162,6 +170,7 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
     // Secours si besoin via le sélecteur standard
     handleTakePhoto();
   };
+
   const handleTakePhoto = async () => {
     await triggerHaptic('light');
     try {
@@ -176,11 +185,13 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
 
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
-        quality: 0.6,
+        quality: 0.7,
         base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
+        setCapturedPhotoUri(result.assets[0].uri);
+        setIsAnalyzing(true);
         processImage(result.assets[0].base64, result.assets[0].uri);
       }
     } catch (e) {
@@ -202,11 +213,13 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: false,
-        quality: 0.6,
+        quality: 0.7,
         base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
+        setCapturedPhotoUri(result.assets[0].uri);
+        setIsAnalyzing(true);
         processImage(result.assets[0].base64, result.assets[0].uri);
       }
     } catch (e) {
@@ -363,9 +376,15 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
     handleClose();
   };
 
+  const { height: windowHeight, width: windowWidth } = Dimensions.get('window');
+  const frameWidth = Math.min(windowWidth - 48, 360);
+  const frameHeight = Math.min(460, Math.max(300, windowHeight - 280));
+
   const handleClose = () => {
     setStep('capture');
     setParsedData(null);
+    setCapturedPhotoUri(null);
+    setIsAnalyzing(false);
     setEditingItemId(null);
     onClose();
   };
@@ -373,98 +392,179 @@ export const ReceiptScannerModal: React.FC<ReceiptScannerModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
       {step === 'capture' ? (
-        /* ÉCRAN 1 : CADRAGE & CAPTURE DU TICKET (CAMÉRA INTÉGRÉE AVEC COINS ANIMÉS) */
-        <View style={styles.captureContainer}>
-          {/* Flux direct de la caméra intégrée à l'application */}
-          {permission?.granted ? (
-            <CameraView
-              ref={cameraRef}
-              style={StyleSheet.absoluteFill}
-              facing="back"
-            />
-          ) : (
-            <View style={styles.permissionFallback}>
-              <Ionicons name="camera-outline" size={48} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.permissionText}>
-                L’accès à l’appareil photo est nécessaire pour scanner vos tickets en direct
+        /* ÉCRAN 1 : CADRAGE & CAPTURE DU TICKET (CAMÉRA INTÉGRÉE UNIQUEMENT DANS LE PETIT CADRE IA) */
+        <View style={[styles.captureContainer, { backgroundColor: theme.colors.background }]}>
+          {/* Header supérieur respectant le thème de l'application */}
+          <View style={styles.captureHeader}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={[
+                styles.headerCircleBtn,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              accessibilityLabel="Fermer"
+            >
+              <Ionicons name="close" size={22} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+
+            <View style={styles.headerTitleGroup}>
+              <Text style={[styles.captureTitle, { color: theme.colors.textPrimary }]}>
+                Scanner un ticket
               </Text>
-              <TouchableOpacity style={styles.grantBtn} onPress={requestPermission}>
-                <Text style={styles.grantBtnText}>Autoriser la caméra</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Calque de visée au-dessus du flux caméra */}
-          <View style={styles.cameraOverlay} pointerEvents="box-none">
-            {/* Header supérieur */}
-            <View style={styles.captureHeader}>
-              <TouchableOpacity onPress={handleClose} style={styles.headerCircleBtn}>
-                <Ionicons name="close" size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.captureTitle}>Scanner un ticket</Text>
-              <TouchableOpacity onPress={handlePickFromGallery} style={styles.headerCircleBtn}>
-                <Ionicons name="images-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Viseur minimaliste avec caméra visible au centre */}
-            <View style={styles.viewfinderWrapper}>
-              <View style={styles.viewfinder}>
-                {/* 4 coins animés qui s'écartent et changent de couleur quand on est bien placé */}
-                <Animated.View style={[styles.corner, styles.tl, tlCornerStyle]} />
-                <Animated.View style={[styles.corner, styles.tr, trCornerStyle]} />
-                <Animated.View style={[styles.corner, styles.bl, blCornerStyle]} />
-                <Animated.View style={[styles.corner, styles.br, brCornerStyle]} />
-
-                {/* Rayon laser d'analyse fluide */}
-                <Animated.View style={[styles.scanLaser, scanLineStyle]} />
-
-                {isAnalyzing ? (
-                  <View style={styles.analyzingBox}>
-                    <ActivityIndicator size="large" color="#10B981" />
-                    <Text style={styles.analyzingText}>Lecture IA des articles en cours...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.viewfinderContent}>
-                    <View style={styles.alignmentBadge}>
-                      <View style={styles.pulseDot} />
-                      <Text style={styles.alignmentBadgeText}>Alignement automatique</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            {/* Déclencheur instantané */}
-            <View style={styles.captureFooter}>
-              <TouchableOpacity
-                style={styles.triggerBtn}
-                activeOpacity={0.8}
-                onPress={handleCaptureWithCamera}
-                disabled={isAnalyzing}
-              >
-                <View style={styles.triggerInner} />
-              </TouchableOpacity>
-              <Text style={styles.triggerCaption}>
-                {isAnalyzing ? 'Analyse...' : 'Prendre la photo'}
+              <Text style={[styles.captureSubtitle, { color: theme.colors.textSecondary }]}>
+                Cadrez votre reçu dans la zone IA
               </Text>
             </View>
+
+            <TouchableOpacity
+              onPress={handlePickFromGallery}
+              style={[
+                styles.headerCircleBtn,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              accessibilityLabel="Choisir depuis la galerie"
+            >
+              <Ionicons name="images-outline" size={20} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Viseur IA : L'appareil photo s'ouvre UNIQUEMENT dans ce cadre */}
+          <View style={styles.viewfinderWrapper}>
+            <View
+              style={[
+                styles.viewfinder,
+                {
+                  width: frameWidth,
+                  height: frameHeight,
+                  backgroundColor: '#0E1116',
+                  borderColor: 'rgba(16, 185, 129, 0.45)',
+                },
+              ]}
+            >
+              {/* Image capturée figée (prise de vue) OU flux direct de la caméra */}
+              {capturedPhotoUri ? (
+                <Image
+                  source={{ uri: capturedPhotoUri }}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                />
+              ) : permission?.granted ? (
+                <CameraView
+                  ref={cameraRef}
+                  style={StyleSheet.absoluteFill}
+                  facing="back"
+                />
+              ) : (
+                <View style={styles.permissionFallbackInFrame}>
+                  <Ionicons name="camera-outline" size={44} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.permissionTitleInFrame}>Caméra requise</Text>
+                  <Text style={styles.permissionDescInFrame}>
+                    Autorisez l'appareil photo pour viser vos tickets directement
+                  </Text>
+                  <TouchableOpacity style={styles.grantBtn} onPress={requestPermission}>
+                    <Text style={styles.grantBtnText}>Autoriser la caméra</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* 4 coins animés de détection IA */}
+              <Animated.View style={[styles.corner, styles.tl, tlCornerStyle]} />
+              <Animated.View style={[styles.corner, styles.tr, trCornerStyle]} />
+              <Animated.View style={[styles.corner, styles.bl, blCornerStyle]} />
+              <Animated.View style={[styles.corner, styles.br, brCornerStyle]} />
+
+              {/* Laser d'analyse vert */}
+              <Animated.View style={[styles.scanLaser, scanLineStyle]} />
+
+              {/* Overlay d'état en cours de décryptage */}
+              {isAnalyzing ? (
+                <View style={styles.analyzingOverlay}>
+                  <View style={styles.analyzingPill}>
+                    <ActivityIndicator size="small" color="#10B981" />
+                    <Text style={styles.analyzingText}>Photo capturée ! Décryptage IA...</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.viewfinderBadgeContainer} pointerEvents="none">
+                  <View style={styles.alignmentBadge}>
+                    <View style={styles.pulseDot} />
+                    <Text style={styles.alignmentBadgeText}>Visée automatique IA</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Déclencheur instantané respectant le thème */}
+          <View style={styles.captureFooter}>
+            <TouchableOpacity
+              style={[
+                styles.triggerBtn,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.surface,
+                },
+              ]}
+              activeOpacity={0.8}
+              onPress={handleCaptureWithCamera}
+              disabled={isAnalyzing}
+            >
+              <View
+                style={[
+                  styles.triggerInner,
+                  {
+                    backgroundColor: isAnalyzing
+                      ? theme.colors.textMuted
+                      : theme.colors.accent || '#10B981',
+                  },
+                ]}
+              />
+            </TouchableOpacity>
+            <Text style={[styles.triggerCaption, { color: theme.colors.textSecondary }]}>
+              {isAnalyzing ? 'Décryptage du ticket...' : 'Prendre la photo'}
+            </Text>
           </View>
         </View>
       ) : (
         /* ÉCRAN 2 : PRÉVISUALISATION INTERACTIVE AVEC CASES À COCHER & CRAYON */
-        <View style={styles.previewContainer}>
+        <View style={[styles.previewContainer, { backgroundColor: theme.colors.background }]}>
           {/* Header de la prévisualisation */}
-          <View style={styles.previewHeader}>
-            <TouchableOpacity onPress={() => setStep('capture')} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={20} color={THEME.colors.textPrimary} />
+          <View style={[styles.previewHeader, { borderBottomColor: theme.colors.border }]}>
+            <TouchableOpacity
+              onPress={() => {
+                setCapturedPhotoUri(null);
+                setIsAnalyzing(false);
+                setStep('capture');
+              }}
+              style={[
+                styles.backButton,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.headerTitles}>
-              <Text style={styles.previewTitle}>{parsedData?.merchant || 'Ticket de caisse'}</Text>
-              <Text style={styles.previewDate}>{parsedData?.date}</Text>
+              <Text style={[styles.previewTitle, { color: theme.colors.textPrimary }]}>
+                {parsedData?.merchant || 'Ticket de caisse'}
+              </Text>
+              <Text style={[styles.previewDate, { color: theme.colors.textSecondary }]}>
+                {parsedData?.date}
+              </Text>
             </View>
-            <TouchableOpacity onPress={addNewItem} style={styles.addItemBtn}>
-              <Ionicons name="add" size={22} color={THEME.colors.textPrimary} />
+            <TouchableOpacity
+              onPress={addNewItem}
+              style={[
+                styles.addItemBtn,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Ionicons name="add" size={22} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -667,76 +767,155 @@ const styles = StyleSheet.create({
   /* STYLES CAPTURE */
   captureContainer: {
     flex: 1,
-    backgroundColor: '#0B0B0E',
-    position: 'relative',
-  },
-  cameraOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     justifyContent: 'space-between',
     paddingTop: 50,
-    paddingBottom: 40,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    paddingBottom: 36,
   },
-  permissionFallback: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#0B0B0E',
+  captureHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  headerTitleGroup: {
+    alignItems: 'center',
+  },
+  captureTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  captureSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  headerCircleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
   },
-  permissionText: {
+  viewfinderWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    flex: 1,
+  },
+  viewfinder: {
+    borderRadius: 24,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  corner: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderColor: '#10B981',
+    zIndex: 10,
+  },
+  tl: {
+    top: 10,
+    left: 10,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 14,
+  },
+  tr: {
+    top: 10,
+    right: 10,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 14,
+  },
+  bl: {
+    bottom: 10,
+    left: 10,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 14,
+  },
+  br: {
+    bottom: 10,
+    right: 10,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 14,
+  },
+  scanLaser: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: 20,
+    height: 3,
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 5,
+    zIndex: 9,
+  },
+  permissionFallbackInFrame: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#121318',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  permissionTitleInFrame: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    marginTop: 12,
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 20,
-    lineHeight: 22,
+  },
+  permissionDescInFrame: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 16,
+    lineHeight: 18,
   },
   grantBtn: {
     backgroundColor: '#10B981',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
   grantBtnText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 13,
   },
-  scanLaser: {
+  viewfinderBadgeContainer: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    top: 30,
-    height: 2.5,
-    backgroundColor: '#10B981',
-    borderRadius: 1.5,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-    elevation: 4,
+    bottom: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   alignmentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    marginTop: 160,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   pulseDot: {
     width: 7,
@@ -746,127 +925,60 @@ const styles = StyleSheet.create({
   },
   alignmentBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
-  captureHeader: {
+  analyzingOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 11,
+  },
+  analyzingPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-  },
-  headerCircleBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  captureTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  viewfinderWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  viewfinder: {
-    width: '100%',
-    height: 420,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-  },
-  corner: {
-    position: 'absolute',
-    width: 26,
-    height: 26,
-    borderColor: '#FFFFFF',
-  },
-  tl: {
-    top: -1,
-    left: -1,
-    borderTopWidth: 3.5,
-    borderLeftWidth: 3.5,
-    borderTopLeftRadius: 16,
-  },
-  tr: {
-    top: -1,
-    right: -1,
-    borderTopWidth: 3.5,
-    borderRightWidth: 3.5,
-    borderTopRightRadius: 16,
-  },
-  bl: {
-    bottom: -1,
-    left: -1,
-    borderBottomWidth: 3.5,
-    borderLeftWidth: 3.5,
-    borderBottomLeftRadius: 16,
-  },
-  br: {
-    bottom: -1,
-    right: -1,
-    borderBottomWidth: 3.5,
-    borderRightWidth: 3.5,
-    borderBottomRightRadius: 16,
-  },
-  viewfinderContent: {
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  viewfinderGuide: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  viewfinderSubGuide: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  analyzingBox: {
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
   },
   analyzingText: {
     color: '#FFFFFF',
-    marginTop: 16,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   captureFooter: {
     alignItems: 'center',
+    paddingTop: 8,
   },
   triggerBtn: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   triggerInner: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: '#FFFFFF',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   triggerCaption: {
-    color: 'rgba(255,255,255,0.6)',
     fontSize: 13,
+    fontWeight: '500',
   },
 
   /* STYLES PRÉVISUALISATION */
