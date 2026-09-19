@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "name": "budget-app",
   "cleanUrls": true,
   "outputDirectory": "dist",
+  "buildCommand": "npm run build",
   "rewrites": [
     {
       "source": "/(.*)",
