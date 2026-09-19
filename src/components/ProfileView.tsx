@@ -59,6 +59,54 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     return true;
   });
 
+  // Convertir l'image choisie en Data URL base64 permanent pour persister après la fermeture de l'app
+  const processAvatarAsset = async (asset: { uri: string; base64?: string | null; mimeType?: string }): Promise<string> => {
+    // 1. Si le base64 est déjà extrait directement
+    if (asset.base64) {
+      const mime = asset.mimeType || 'image/jpeg';
+      return `data:${mime};base64,${asset.base64}`;
+    }
+
+    // 2. Sur le Web, convertir via Canvas pour créer un Data URL permanent et léger (256x256)
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        return await new Promise<string>((resolve) => {
+          const img = new (window as any).Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const targetSize = 256;
+              canvas.width = targetSize;
+              canvas.height = targetSize;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                const minDim = Math.min(img.width, img.height);
+                const sx = (img.width - minDim) / 2;
+                const sy = (img.height - minDim) / 2;
+                ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                resolve(dataUrl);
+                return;
+              }
+            } catch (canvasErr) {
+              console.warn('Canvas conversion error:', canvasErr);
+            }
+            resolve(asset.uri);
+          };
+          img.onerror = () => {
+            resolve(asset.uri);
+          };
+          img.src = asset.uri;
+        });
+      } catch (e) {
+        console.warn('Error processing avatar on web:', e);
+      }
+    }
+
+    return asset.uri;
+  };
+
   const pickImageFromGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -70,11 +118,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
+        quality: 0.8,
+        base64: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         triggerHaptic('success');
-        onSaveUserAvatar(result.assets[0].uri);
+        const permanentUri = await processAvatarAsset(result.assets[0]);
+        onSaveUserAvatar(permanentUri);
         setIsPhotoModalOpen(false);
         showToast('Photo de profil mise à jour');
       }
@@ -93,11 +143,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
+        quality: 0.8,
+        base64: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         triggerHaptic('success');
-        onSaveUserAvatar(result.assets[0].uri);
+        const permanentUri = await processAvatarAsset(result.assets[0]);
+        onSaveUserAvatar(permanentUri);
         setIsPhotoModalOpen(false);
         showToast('Photo de profil mise à jour');
       }

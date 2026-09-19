@@ -63,7 +63,13 @@ export default function Index() {
     const savedName = await getSetting('user_name', '');
     setUserName(savedName);
     const savedAvatar = await getSetting('user_avatar', '');
-    setUserAvatar(savedAvatar || null);
+    if (savedAvatar && savedAvatar.startsWith('blob:')) {
+      // Les URLs temporaires blob: expirent à la fermeture du navigateur, on nettoie
+      await setSetting('user_avatar', '');
+      setUserAvatar(null);
+    } else {
+      setUserAvatar(savedAvatar || null);
+    }
 
     // Charger les plafonds personnalisés de budget
     const foodB = await getSetting('budget_food', '400');
